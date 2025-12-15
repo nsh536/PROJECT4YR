@@ -1,12 +1,217 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Header } from "@/components/Header";
+import { JobSearchForm } from "@/components/JobSearchForm";
+import { JobCard } from "@/components/JobCard";
+import { Button } from "@/components/ui/button";
+import { jobs } from "@/data/mockData";
+import { Link } from "react-router-dom";
+import { 
+  ArrowRight, 
+  Briefcase, 
+  Users, 
+  FileText, 
+  Sparkles,
+  CheckCircle,
+  TrendingUp,
+  Globe,
+  Zap
+} from "lucide-react";
+
+const stats = [
+  { icon: Briefcase, value: "10,000+", label: "Active Jobs" },
+  { icon: Users, value: "50,000+", label: "Candidates" },
+  { icon: Globe, value: "500+", label: "Companies" },
+  { icon: TrendingUp, value: "95%", label: "Success Rate" },
+];
+
+const features = [
+  {
+    icon: Sparkles,
+    title: "AI-Powered Matching",
+    description: "Our intelligent algorithms match you with the perfect opportunities based on your skills and preferences.",
+  },
+  {
+    icon: FileText,
+    title: "Smart Resume Builder",
+    description: "Create stunning resumes with AI assistance that highlight your strengths and get noticed by recruiters.",
+  },
+  {
+    icon: Zap,
+    title: "Instant Applications",
+    description: "Apply to multiple jobs with one click. Save time and increase your chances of landing interviews.",
+  },
+  {
+    icon: CheckCircle,
+    title: "Verified Employers",
+    description: "All companies on our platform are verified, ensuring you only connect with legitimate opportunities.",
+  },
+];
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen gradient-hero">
+      <Header />
+      
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-4">
+        <div className="container mx-auto max-w-6xl text-center">
+          <div className="animate-fade-up">
+            <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6">
+              🚀 AI-Powered Career Platform
+            </span>
+            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+              Find Your Dream Career
+              <br />
+              <span className="gradient-text">Powered by AI</span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+              Career Compass uses cutting-edge AI to match you with perfect job opportunities, 
+              build stunning resumes, and accelerate your career growth.
+            </p>
+          </div>
+
+          {/* Search Form */}
+          <div className="animate-fade-up" style={{ animationDelay: "0.2s" }}>
+            <JobSearchForm onSearch={(q, l, t) => console.log(q, l, t)} />
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 animate-fade-up" style={{ animationDelay: "0.4s" }}>
+            {stats.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-3">
+                  <stat.icon className="h-6 w-6 text-primary" />
+                </div>
+                <div className="font-display font-bold text-2xl md:text-3xl">{stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 px-4 bg-card">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+              Why Choose Career Compass?
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              We combine cutting-edge AI technology with a human touch to help you navigate your career journey.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <div
+                key={feature.title}
+                className="gradient-card p-6 rounded-2xl border border-border hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-fade-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-4 shadow-soft">
+                  <feature.icon className="h-6 w-6 text-primary-foreground" />
+                </div>
+                <h3 className="font-display font-semibold text-lg mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground text-sm">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Jobs */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
+                Featured Jobs
+              </h2>
+              <p className="text-muted-foreground">Handpicked opportunities from top companies</p>
+            </div>
+            <Link to="/jobs">
+              <Button variant="outline" className="hidden md:flex">
+                View All Jobs
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {jobs.slice(0, 4).map((job, index) => (
+              <div
+                key={job.id}
+                className="animate-fade-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <JobCard job={job} />
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-10 md:hidden">
+            <Link to="/jobs">
+              <Button variant="gradient" size="lg">
+                View All Jobs
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <div className="gradient-bg rounded-3xl p-10 md:p-16 text-center shadow-glow relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(255,255,255,0.2),transparent_50%)]" />
+            <div className="relative z-10">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+                Ready to Transform Your Career?
+              </h2>
+              <p className="text-primary-foreground/90 max-w-xl mx-auto mb-8">
+                Join thousands of professionals who have found their dream jobs through Career Compass.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/jobs">
+                  <Button 
+                    size="xl" 
+                    className="bg-background text-foreground hover:bg-background/90 shadow-elevated"
+                  >
+                    Find Jobs
+                  </Button>
+                </Link>
+                <Link to="/resume">
+                  <Button 
+                    variant="outline" 
+                    size="xl"
+                    className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                  >
+                    Build Resume
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-10 px-4 border-t border-border">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl gradient-bg">
+                <Briefcase className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="font-display font-bold">CareerCompass</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © 2024 Career Compass AI. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
