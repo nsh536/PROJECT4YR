@@ -8,8 +8,6 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/jobs", label: "Find Jobs" },
   { href: "/candidates", label: "Find Talent" },
-  { href: "/post-job", label: "Post Job" },
-  { href: "/resume", label: "Resume Builder" },
 ];
 
 export function Header() {
