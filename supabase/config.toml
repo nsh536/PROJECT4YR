@@ -1,1 +1,13 @@
 project_id = "crplzfgtfgrijpbsqbnn"
+
+[functions.parse-resume]
+verify_jwt = true
+
+[functions.match-jobs]
+verify_jwt = true
+
+[functions.search-candidates]
+verify_jwt = true
+
+[functions.notify-employer]
+verify_jwt = true
