@@ -28,7 +28,7 @@ import {
   Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import Header from '@/components/Header';
+import { Header } from '@/components/Header';
 
 interface Job {
   id: string;

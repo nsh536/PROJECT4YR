@@ -20,7 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
-import Header from '@/components/Header';
+import { Header } from '@/components/Header';
 
 interface Resume {
   id: string;
