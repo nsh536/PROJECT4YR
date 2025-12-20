@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -30,6 +31,19 @@ interface ParsedResume {
   } | null;
 }
 
+interface MatchedJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  job_type: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  skills_required: string[];
+  match_score: number;
+  matching_skills: string[];
+}
+
 export default function ResumeUpload() {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -37,6 +51,8 @@ export default function ResumeUpload() {
   const [parsing, setParsing] = useState(false);
   const [resume, setResume] = useState<ParsedResume | null>(null);
   const [loadingResume, setLoadingResume] = useState(true);
+  const [matchedJobs, setMatchedJobs] = useState<MatchedJob[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -48,10 +64,10 @@ export default function ResumeUpload() {
   }, [user, profile, authLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
-      fetchResume();
+    if (resume && resume.status === 'parsed' && resume.skills?.length > 0) {
+      fetchMatchingJobs(resume.skills);
     }
-  }, [user]);
+  }, [resume]);
 
   const fetchResume = async () => {
     try {
@@ -69,6 +85,27 @@ export default function ResumeUpload() {
       console.error('Error fetching resume:', error);
     } finally {
       setLoadingResume(false);
+    }
+  };
+
+  const fetchMatchingJobs = async (skills: string[]) => {
+    setLoadingJobs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('match-jobs', {
+        body: { skills }
+      });
+
+      if (error) throw error;
+      
+      if (data?.jobs) {
+        // Filter to only show jobs with some match
+        const relevantJobs = data.jobs.filter((job: MatchedJob) => job.match_score > 0);
+        setMatchedJobs(relevantJobs.slice(0, 6)); // Show top 6 matches
+      }
+    } catch (error) {
+      console.error('Error fetching matching jobs:', error);
+    } finally {
+      setLoadingJobs(false);
     }
   };
 
@@ -305,6 +342,120 @@ export default function ResumeUpload() {
                   )}
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {/* Matching Jobs Section */}
+          {resume && resume.status === 'parsed' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                    <TrendingUp className="h-6 w-6 text-primary" />
+                    Jobs Matching Your Profile
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    Based on your skills and experience
+                  </p>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link to="/jobs">View All Jobs</Link>
+                </Button>
+              </div>
+
+              {loadingJobs ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : matchedJobs.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {matchedJobs.map((job) => (
+                    <Card key={job.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <CardTitle className="text-lg">{job.title}</CardTitle>
+                            <CardDescription className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {job.company}
+                            </CardDescription>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1">
+                              <span className={`text-lg font-bold ${
+                                job.match_score >= 70 ? 'text-green-500' :
+                                job.match_score >= 40 ? 'text-yellow-500' : 'text-muted-foreground'
+                              }`}>
+                                {job.match_score}%
+                              </span>
+                              <span className="text-xs text-muted-foreground">match</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {job.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="h-3 w-3" />
+                            {job.job_type}
+                          </span>
+                          {job.salary_min && job.salary_max && (
+                            <span>
+                              ${(job.salary_min / 1000).toFixed(0)}k - ${(job.salary_max / 1000).toFixed(0)}k
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-muted-foreground">Skill Match</span>
+                            <span className="font-medium">{job.matching_skills.length}/{job.skills_required.length} skills</span>
+                          </div>
+                          <Progress value={job.match_score} className="h-2" />
+                        </div>
+
+                        {job.matching_skills.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Matching skills:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {job.matching_skills.slice(0, 4).map((skill, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {job.matching_skills.length > 4 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{job.matching_skills.length - 4} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <Button className="w-full" size="sm" asChild>
+                          <Link to="/jobs">View Job</Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      No matching jobs found. Check back later for new opportunities!
+                    </p>
+                    <Button variant="outline" className="mt-4" asChild>
+                      <Link to="/jobs">Browse All Jobs</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
