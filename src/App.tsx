@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Jobs from "./pages/Jobs";
 import Candidates from "./pages/Candidates";
 import Auth from "./pages/Auth";
+import ResumeUpload from "./pages/ResumeUpload";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/candidates" element={<Candidates />} />
+            <Route path="/resume" element={<ResumeUpload />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
