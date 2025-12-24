@@ -4,6 +4,7 @@ import { JobSearchForm } from "@/components/JobSearchForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { 
   Filter, 
   X, 
@@ -13,7 +14,10 @@ import {
   Clock,
   Loader2,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  TrendingUp,
+  Sparkles,
+  Star
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +41,8 @@ interface Job {
   description: string;
   skills_required: string[];
   created_at: string;
+  matchScore?: number;
+  matchingSkills?: string[];
 }
 
 interface Resume {
@@ -57,6 +63,7 @@ const Jobs = () => {
   const [userResume, setUserResume] = useState<Resume | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [appliedJobs, setAppliedJobs] = useState<string[]>([]);
+  const [showRecommended, setShowRecommended] = useState(true);
 
   useEffect(() => {
     fetchJobs();
@@ -65,6 +72,37 @@ const Jobs = () => {
       fetchAppliedJobs();
     }
   }, [user]);
+
+  // Calculate match scores when resume is loaded
+  useEffect(() => {
+    if (userResume?.skills?.length && jobs.length) {
+      const jobsWithScores = jobs.map(job => {
+        const { score, matchingSkills } = calculateMatchDetails(
+          job.skills_required || [], 
+          userResume.skills
+        );
+        return { ...job, matchScore: score, matchingSkills };
+      });
+      // Sort by match score for recommended view
+      setJobs(jobsWithScores.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)));
+    }
+  }, [userResume]);
+
+  const calculateMatchDetails = (jobSkills: string[], resumeSkills: string[]): { score: number; matchingSkills: string[] } => {
+    if (!jobSkills?.length || !resumeSkills?.length) return { score: 0, matchingSkills: [] };
+    
+    const jobSkillsLower = jobSkills.map(s => s.toLowerCase());
+    const resumeSkillsLower = resumeSkills.map(s => s.toLowerCase());
+    
+    const matchingSkills = jobSkills.filter(skill => 
+      resumeSkillsLower.some(rs => 
+        rs.includes(skill.toLowerCase()) || skill.toLowerCase().includes(rs)
+      )
+    );
+    
+    const score = Math.round((matchingSkills.length / jobSkillsLower.length) * 100);
+    return { score, matchingSkills };
+  };
 
   const fetchJobs = async () => {
     const { data, error } = await supabase
@@ -76,7 +114,19 @@ const Jobs = () => {
     if (error) {
       console.error("Error fetching jobs:", error);
     } else {
-      setJobs(data || []);
+      // If we have resume skills, calculate match scores
+      if (userResume?.skills?.length) {
+        const jobsWithScores = (data || []).map(job => {
+          const { score, matchingSkills } = calculateMatchDetails(
+            job.skills_required || [], 
+            userResume.skills
+          );
+          return { ...job, matchScore: score, matchingSkills };
+        });
+        setJobs(jobsWithScores.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)));
+      } else {
+        setJobs(data || []);
+      }
     }
     setIsLoading(false);
   };
@@ -221,6 +271,44 @@ const Jobs = () => {
         </div>
       </section>
 
+      {/* Personalized Recommendations Banner */}
+      {userResume && profile?.role === 'student' && (
+        <section className="py-6 px-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b">
+          <div className="container mx-auto max-w-6xl">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground">Personalized for You</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Jobs matched to your resume skills ({userResume.skills?.length || 0} skills detected)
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant={showRecommended ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setShowRecommended(true)}
+                >
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  Best Matches
+                </Button>
+                <Button 
+                  variant={!showRecommended ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setShowRecommended(false)}
+                >
+                  All Jobs
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Filters & Results */}
       <section className="py-10 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -254,7 +342,11 @@ const Jobs = () => {
           {/* Results Count */}
           <div className="flex items-center justify-between mb-6">
             <p className="text-muted-foreground">
-              Showing <span className="font-semibold text-foreground">{filteredJobs.length}</span> jobs
+              {userResume && showRecommended ? (
+                <>Showing <span className="font-semibold text-foreground">{filteredJobs.filter(j => (j.matchScore || 0) > 0).length}</span> matching jobs</>
+              ) : (
+                <>Showing <span className="font-semibold text-foreground">{filteredJobs.length}</span> jobs</>
+              )}
             </p>
           </div>
 
@@ -267,12 +359,29 @@ const Jobs = () => {
             <>
               {/* Job Listings */}
               <div className="grid lg:grid-cols-2 gap-6">
-                {filteredJobs.map((job, index) => (
+                {(userResume && showRecommended 
+                  ? filteredJobs.filter(j => (j.matchScore || 0) > 0)
+                  : filteredJobs
+                ).map((job, index) => (
                   <Card 
                     key={job.id} 
-                    className="border-border/50 hover:shadow-lg transition-all animate-fade-up"
+                    className={`border-border/50 hover:shadow-lg transition-all animate-fade-up relative ${
+                      job.matchScore && job.matchScore >= 70 ? 'ring-2 ring-green-500/30' : ''
+                    }`}
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
+                    {/* Match Score Badge */}
+                    {userResume && job.matchScore !== undefined && job.matchScore > 0 && (
+                      <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg ${
+                        job.matchScore >= 70 ? 'bg-green-500 text-white' :
+                        job.matchScore >= 40 ? 'bg-yellow-500 text-white' : 
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        <Star className="h-3 w-3" />
+                        {job.matchScore}% Match
+                      </div>
+                    )}
+
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -303,17 +412,42 @@ const Jobs = () => {
                         {job.description}
                       </p>
 
+                      {/* Skills with match highlighting */}
                       {job.skills_required && job.skills_required.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-4">
-                          {job.skills_required.slice(0, 5).map((skill, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {job.skills_required.length > 5 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{job.skills_required.length - 5}
-                            </Badge>
+                        <div className="space-y-2 mb-4">
+                          <div className="flex flex-wrap gap-1">
+                            {job.skills_required.slice(0, 6).map((skill, i) => {
+                              const isMatching = job.matchingSkills?.includes(skill);
+                              return (
+                                <Badge 
+                                  key={i} 
+                                  variant={isMatching ? "default" : "outline"} 
+                                  className={`text-xs ${isMatching ? 'bg-green-500/80 hover:bg-green-500' : ''}`}
+                                >
+                                  {isMatching && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                                  {skill}
+                                </Badge>
+                              );
+                            })}
+                            {job.skills_required.length > 6 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{job.skills_required.length - 6}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Match progress bar */}
+                          {userResume && job.matchScore !== undefined && job.matchScore > 0 && (
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Skill Match</span>
+                                <span className="font-medium">{job.matchingSkills?.length || 0}/{job.skills_required.length} skills</span>
+                              </div>
+                              <Progress 
+                                value={job.matchScore} 
+                                className="h-1.5"
+                              />
+                            </div>
                           )}
                         </div>
                       )}
