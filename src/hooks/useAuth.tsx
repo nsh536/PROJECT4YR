@@ -104,31 +104,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
-    // Create profile and user_roles entries
+    // Create profile and user_roles entries if they don't already exist
+    // (they may be created by database triggers)
     if (data.user) {
-      const { error: profileError } = await supabase
+      // Check if profile already exists
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          user_id: data.user.id,
-          email: email,
-          full_name: fullName,
-          role: role,
-          company_name: companyName || null
-        });
+        .select('id')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
+      if (!existingProfile) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: data.user.id,
+            email: email,
+            full_name: fullName,
+            role: role,
+            company_name: companyName || null
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
       }
 
-      const { error: roleError } = await supabase
+      // Check if user_role already exists
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .insert({
-          user_id: data.user.id,
-          role: role
-        });
+        .select('id')
+        .eq('user_id', data.user.id)
+        .eq('role', role)
+        .maybeSingle();
 
-      if (roleError) {
-        console.error('Error creating user role:', roleError);
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role: role
+          });
+
+        if (roleError) {
+          console.error('Error creating user role:', roleError);
+        }
       }
     }
 

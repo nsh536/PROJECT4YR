@@ -60,6 +60,8 @@ export default function ResumeUpload() {
     } else if (!authLoading && profile?.role === 'employer') {
       navigate('/');
       toast.error('Only students can upload resumes');
+    } else if (!authLoading && user) {
+      fetchResume();
     }
   }, [user, profile, authLoading, navigate]);
 
