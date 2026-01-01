@@ -20,22 +20,23 @@ serve(async (req) => {
 
     console.log('Searching candidates for position:', position, 'skills:', requiredSkills);
 
-    // Get all parsed resumes with profile info
+    // Get all parsed resumes
     const { data: resumes, error: resumesError } = await supabase
       .from('resumes')
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          email,
-          phone,
-          location,
-          avatar_url
-        )
-      `)
+      .select('*')
       .eq('status', 'parsed');
 
     if (resumesError) throw resumesError;
+
+    // Get all profiles to join with resumes
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, email, phone, location, avatar_url');
+
+    if (profilesError) throw profilesError;
+
+    // Create a map of profiles by user_id for quick lookup
+    const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
     // Calculate match scores based on position and skills
     const searchTerms = [
@@ -65,9 +66,13 @@ serve(async (req) => {
       
       // Cap at 100
       matchScore = Math.min(matchScore, 100);
+
+      // Attach profile info
+      const profile = profilesMap.get(resume.user_id);
       
       return {
         ...resume,
+        profiles: profile || null,
         match_score: matchScore,
         matching_skills: matchingSkills
       };
