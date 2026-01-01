@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Users, Loader2, Briefcase, GraduationCap, Clock, MapPin, Mail, Phone } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Users, Loader2, Briefcase, GraduationCap, Clock, MapPin, Mail, Phone, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,6 +41,12 @@ interface MatchedCandidate {
   } | null;
 }
 
+interface EmployerJob {
+  id: string;
+  title: string;
+  skills_required: string[] | null;
+}
+
 const Candidates = () => {
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +56,9 @@ const Candidates = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<MatchedCandidate | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -59,9 +69,37 @@ const Candidates = () => {
     }
   }, [user, profile, authLoading, navigate]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      toast.error('Please enter a job role to search');
+  // Fetch employer's jobs
+  useEffect(() => {
+    const fetchEmployerJobs = async () => {
+      if (!user || profile?.role !== 'employer') return;
+      
+      setLoadingJobs(true);
+      try {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('id, title, skills_required')
+          .eq('employer_id', user.id)
+          .eq('is_active', true);
+
+        if (error) throw error;
+        setEmployerJobs(data || []);
+      } catch (error) {
+        console.error('Error fetching employer jobs:', error);
+      } finally {
+        setLoadingJobs(false);
+      }
+    };
+
+    fetchEmployerJobs();
+  }, [user, profile]);
+
+  const handleSearch = async (jobTitle?: string, skills?: string[]) => {
+    const searchText = jobTitle || searchQuery;
+    const searchSkills = skills || searchQuery.split(' ').filter(s => s.length > 2);
+
+    if (!searchText.trim() && searchSkills.length === 0) {
+      toast.error('Please enter a job role or select a job to search');
       return;
     }
 
@@ -70,8 +108,8 @@ const Candidates = () => {
     try {
       const { data, error } = await supabase.functions.invoke('search-candidates', {
         body: {
-          position: searchQuery,
-          requiredSkills: searchQuery.split(' ').filter(s => s.length > 2)
+          position: searchText,
+          requiredSkills: searchSkills
         }
       });
 
@@ -88,6 +126,15 @@ const Candidates = () => {
       toast.error('Failed to search candidates');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleJobSelect = (jobId: string) => {
+    setSelectedJobId(jobId);
+    const selectedJob = employerJobs.find(j => j.id === jobId);
+    if (selectedJob) {
+      setSearchQuery(selectedJob.title);
+      handleSearch(selectedJob.title, selectedJob.skills_required || []);
     }
   };
 
@@ -120,18 +167,50 @@ const Candidates = () => {
               Find <span className="gradient-text">Top Talent</span>
             </h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Enter a job role to find candidates with matching skills and experience
+              Select one of your job postings or enter a role to find matching candidates
             </p>
           </div>
           
-          {/* Search */}
+          {/* Job Selector */}
+          {employerJobs.length > 0 && (
+            <div className="max-w-2xl mx-auto mb-4 animate-fade-up">
+              <div className="glass rounded-2xl p-4 shadow-elevated">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Quick Search from Your Jobs</span>
+                </div>
+                <Select value={selectedJobId} onValueChange={handleJobSelect}>
+                  <SelectTrigger className="w-full h-12 bg-secondary/50 border-0">
+                    <SelectValue placeholder="Select a job to find matching candidates" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employerJobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4" />
+                          {job.title}
+                          {job.skills_required && job.skills_required.length > 0 && (
+                            <span className="text-muted-foreground text-xs">
+                              ({job.skills_required.length} skills)
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Search */}
           <div className="max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: "0.1s" }}>
             <div className="glass rounded-2xl p-3 shadow-elevated">
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    placeholder="Enter job role (e.g., React Developer, Data Scientist)"
+                    placeholder="Or enter job role (e.g., React Developer, Data Scientist)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyPress={handleKeyPress}
@@ -139,7 +218,7 @@ const Candidates = () => {
                   />
                 </div>
                 <Button 
-                  onClick={handleSearch} 
+                  onClick={() => handleSearch()} 
                   disabled={loading}
                   className="h-14 px-8 gradient-bg"
                 >
