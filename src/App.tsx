@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Jobs from "./pages/Jobs";
 import Candidates from "./pages/Candidates";
+import Messages from "./pages/Messages";
 import Auth from "./pages/Auth";
 import ResumeUpload from "./pages/ResumeUpload";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/candidates" element={<Candidates />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/resume" element={<ResumeUpload />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

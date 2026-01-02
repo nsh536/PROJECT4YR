@@ -192,6 +192,16 @@ const Candidates = () => {
 
       if (error) throw error;
 
+      // Send email notification
+      await supabase.functions.invoke('notify-message', {
+        body: {
+          recipientId: resumeData.user_id,
+          senderName: profile?.full_name || profile?.company_name || user.email,
+          subject: messageSubject,
+          preview: messageContent.substring(0, 100)
+        }
+      });
+
       toast.success(`Message sent to ${candidateToMessage.profiles?.full_name || 'candidate'}`);
       setMessageDialogOpen(false);
       setMessageSubject('');
