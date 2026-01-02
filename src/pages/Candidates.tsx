@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Loader2, Briefcase, GraduationCap, Clock, MapPin, Mail, Phone, Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Search, Users, Loader2, Briefcase, GraduationCap, Clock, MapPin, Mail, Phone, Sparkles, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -59,6 +61,13 @@ const Candidates = () => {
   const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [loadingJobs, setLoadingJobs] = useState(false);
+  
+  // Messaging state
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [messageSubject, setMessageSubject] = useState("");
+  const [messageContent, setMessageContent] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [candidateToMessage, setCandidateToMessage] = useState<MatchedCandidate | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -141,6 +150,58 @@ const Candidates = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+
+  const openMessageDialog = (candidate: MatchedCandidate, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCandidateToMessage(candidate);
+    setMessageSubject(`Opportunity: ${searchQuery || 'Position at our company'}`);
+    setMessageContent('');
+    setMessageDialogOpen(true);
+  };
+
+  const handleSendMessage = async () => {
+    if (!candidateToMessage || !user) return;
+    
+    if (!messageSubject.trim() || !messageContent.trim()) {
+      toast.error('Please fill in both subject and message');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      // Get the candidate's user_id from their resume
+      const { data: resumeData } = await supabase
+        .from('resumes')
+        .select('user_id')
+        .eq('id', candidateToMessage.id)
+        .single();
+
+      if (!resumeData?.user_id) {
+        throw new Error('Could not find candidate');
+      }
+
+      const { error } = await supabase.from('messages').insert({
+        sender_id: user.id,
+        recipient_id: resumeData.user_id,
+        job_id: selectedJobId || null,
+        subject: messageSubject,
+        content: messageContent
+      });
+
+      if (error) throw error;
+
+      toast.success(`Message sent to ${candidateToMessage.profiles?.full_name || 'candidate'}`);
+      setMessageDialogOpen(false);
+      setMessageSubject('');
+      setMessageContent('');
+      setCandidateToMessage(null);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -345,9 +406,18 @@ const Candidates = () => {
                           </div>
                         )}
 
-                        <Button className="w-full" size="sm">
-                          View Profile
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button className="flex-1" size="sm">
+                            View Profile
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => openMessageDialog(candidate, e)}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -484,9 +554,70 @@ const Candidates = () => {
                     </div>
                   </div>
                 )}
+                {/* Contact Button */}
+                <Button 
+                  className="w-full gradient-bg"
+                  onClick={() => openMessageDialog(selectedCandidate)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Contact Candidate
+                </Button>
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Message Dialog */}
+      <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Contact {candidateToMessage?.profiles?.full_name || 'Candidate'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject</Label>
+              <Input
+                id="subject"
+                placeholder="e.g., Exciting opportunity at our company"
+                value={messageSubject}
+                onChange={(e) => setMessageSubject(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                placeholder="Write your message to the candidate..."
+                rows={6}
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setMessageDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendMessage} 
+              disabled={sendingMessage}
+              className="gradient-bg"
+            >
+              {sendingMessage ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Send Message
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
