@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +18,8 @@ import {
   Reply, 
   Clock,
   User,
-  ArrowLeft
+  CheckCheck,
+  Check
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +34,8 @@ interface Message {
   subject: string;
   content: string;
   is_read: boolean;
+  read_at: string | null;
+  parent_message_id: string | null;
   created_at: string;
   sender_profile?: {
     full_name: string | null;
@@ -51,6 +53,7 @@ interface Message {
     title: string;
     company: string;
   } | null;
+  replies?: Message[];
 }
 
 const Messages = () => {
@@ -59,7 +62,6 @@ const Messages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const [activeTab, setActiveTab] = useState("inbox");
@@ -87,6 +89,24 @@ const Messages = () => {
           },
           () => {
             fetchMessages();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `sender_id=eq.${user.id}`
+          },
+          (payload) => {
+            // Update read receipts in real-time
+            setMessages(prev => prev.map(m => 
+              m.id === payload.new.id ? { ...m, is_read: payload.new.is_read, read_at: payload.new.read_at } : m
+            ));
+            if (selectedMessage?.id === payload.new.id) {
+              setSelectedMessage(prev => prev ? { ...prev, is_read: payload.new.is_read, read_at: payload.new.read_at } : null);
+            }
           }
         )
         .subscribe();
@@ -136,10 +156,22 @@ const Messages = () => {
         ...m,
         sender_profile: profilesMap.get(m.sender_id) || null,
         recipient_profile: profilesMap.get(m.recipient_id) || null,
-        job: m.job_id ? jobsMap.get(m.job_id) || null : null
+        job: m.job_id ? jobsMap.get(m.job_id) || null : null,
+        replies: []
       })) || [];
 
-      setMessages(enrichedMessages);
+      // Group messages into threads (parent messages with their replies)
+      const parentMessages = enrichedMessages.filter(m => !m.parent_message_id);
+      const replyMessages = enrichedMessages.filter(m => m.parent_message_id);
+      
+      // Attach replies to parent messages
+      parentMessages.forEach(parent => {
+        parent.replies = replyMessages
+          .filter(reply => reply.parent_message_id === parent.id)
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      });
+
+      setMessages(parentMessages);
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast.error('Failed to load messages');
@@ -150,22 +182,45 @@ const Messages = () => {
 
   const markAsRead = async (messageId: string) => {
     try {
+      const now = new Date().toISOString();
       await supabase
         .from('messages')
-        .update({ is_read: true })
+        .update({ is_read: true, read_at: now })
         .eq('id', messageId);
+      
+      return now;
     } catch (error) {
       console.error('Error marking message as read:', error);
+      return null;
     }
   };
 
   const handleSelectMessage = async (message: Message) => {
     setSelectedMessage(message);
-    if (!message.is_read && message.recipient_id === user?.id) {
-      await markAsRead(message.id);
-      setMessages(prev => prev.map(m => 
-        m.id === message.id ? { ...m, is_read: true } : m
-      ));
+    
+    // Mark the main message and all unread replies as read
+    const messagesToMark = [message, ...(message.replies || [])].filter(
+      m => !m.is_read && m.recipient_id === user?.id
+    );
+    
+    for (const m of messagesToMark) {
+      const readAt = await markAsRead(m.id);
+      if (readAt) {
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === m.id) {
+            return { ...msg, is_read: true, read_at: readAt };
+          }
+          if (msg.replies) {
+            return {
+              ...msg,
+              replies: msg.replies.map(r => 
+                r.id === m.id ? { ...r, is_read: true, read_at: readAt } : r
+              )
+            };
+          }
+          return msg;
+        }));
+      }
     }
   };
 
@@ -177,28 +232,36 @@ const Messages = () => {
 
     setSendingReply(true);
     try {
-      const { error } = await supabase.from('messages').insert({
+      const { data: newReply, error } = await supabase.from('messages').insert({
         sender_id: user.id,
-        recipient_id: selectedMessage.sender_id,
+        recipient_id: selectedMessage.sender_id === user.id 
+          ? selectedMessage.recipient_id 
+          : selectedMessage.sender_id,
         job_id: selectedMessage.job_id,
-        subject: `Re: ${selectedMessage.subject}`,
-        content: replyContent
-      });
+        subject: selectedMessage.subject.startsWith('Re: ') 
+          ? selectedMessage.subject 
+          : `Re: ${selectedMessage.subject}`,
+        content: replyContent,
+        parent_message_id: selectedMessage.id
+      }).select().single();
 
       if (error) throw error;
 
       // Send email notification
+      const recipientId = selectedMessage.sender_id === user.id 
+        ? selectedMessage.recipient_id 
+        : selectedMessage.sender_id;
+      
       await supabase.functions.invoke('notify-message', {
         body: {
-          recipientId: selectedMessage.sender_id,
-          senderName: profile?.full_name || user.email,
+          recipientId,
+          senderName: profile?.full_name || profile?.company_name || user.email,
           subject: `Re: ${selectedMessage.subject}`,
           preview: replyContent.substring(0, 100)
         }
       });
 
       toast.success('Reply sent successfully');
-      setReplyDialogOpen(false);
       setReplyContent('');
       fetchMessages();
     } catch (error) {
@@ -209,9 +272,49 @@ const Messages = () => {
     }
   };
 
-  const inboxMessages = messages.filter(m => m.recipient_id === user?.id);
-  const sentMessages = messages.filter(m => m.sender_id === user?.id);
-  const unreadCount = inboxMessages.filter(m => !m.is_read).length;
+  const inboxMessages = messages.filter(m => 
+    m.recipient_id === user?.id || m.replies?.some(r => r.recipient_id === user?.id)
+  );
+  const sentMessages = messages.filter(m => 
+    m.sender_id === user?.id || m.replies?.some(r => r.sender_id === user?.id)
+  );
+  const unreadCount = messages.reduce((count, m) => {
+    let unread = 0;
+    if (m.recipient_id === user?.id && !m.is_read) unread++;
+    if (m.replies) {
+      unread += m.replies.filter(r => r.recipient_id === user?.id && !r.is_read).length;
+    }
+    return count + unread;
+  }, 0);
+
+  const getThreadUnreadCount = (message: Message) => {
+    let count = 0;
+    if (message.recipient_id === user?.id && !message.is_read) count++;
+    if (message.replies) {
+      count += message.replies.filter(r => r.recipient_id === user?.id && !r.is_read).length;
+    }
+    return count;
+  };
+
+  const ReadReceipt = ({ message }: { message: Message }) => {
+    if (message.sender_id !== user?.id) return null;
+    
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground" title={
+        message.read_at 
+          ? `Read on ${format(new Date(message.read_at), 'MMM d, yyyy h:mm a')}`
+          : message.is_read 
+            ? 'Read' 
+            : 'Delivered'
+      }>
+        {message.is_read ? (
+          <CheckCheck className="h-3 w-3 text-primary" />
+        ) : (
+          <Check className="h-3 w-3" />
+        )}
+      </span>
+    );
+  };
 
   if (authLoading) {
     return (
@@ -274,44 +377,64 @@ const Messages = () => {
                       </div>
                     ) : (
                       <div className="divide-y">
-                        {(activeTab === 'inbox' ? inboxMessages : sentMessages).map((message) => (
-                          <div
-                            key={message.id}
-                            onClick={() => handleSelectMessage(message)}
-                            className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
-                              selectedMessage?.id === message.id ? 'bg-muted' : ''
-                            } ${!message.is_read && activeTab === 'inbox' ? 'bg-primary/5' : ''}`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="mt-1">
-                                {!message.is_read && activeTab === 'inbox' ? (
-                                  <Mail className="h-4 w-4 text-primary" />
-                                ) : (
-                                  <MailOpen className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className={`text-sm truncate ${!message.is_read && activeTab === 'inbox' ? 'font-semibold' : ''}`}>
-                                    {activeTab === 'inbox' 
-                                      ? (message.sender_profile?.full_name || message.sender_profile?.email || 'Unknown')
-                                      : (message.recipient_profile?.full_name || message.recipient_profile?.email || 'Unknown')
-                                    }
-                                  </p>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    {format(new Date(message.created_at), 'MMM d')}
-                                  </span>
+                        {(activeTab === 'inbox' ? inboxMessages : sentMessages).map((message) => {
+                          const threadUnread = getThreadUnreadCount(message);
+                          const replyCount = message.replies?.length || 0;
+                          
+                          return (
+                            <div
+                              key={message.id}
+                              onClick={() => handleSelectMessage(message)}
+                              className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
+                                selectedMessage?.id === message.id ? 'bg-muted' : ''
+                              } ${threadUnread > 0 ? 'bg-primary/5' : ''}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="mt-1">
+                                  {threadUnread > 0 ? (
+                                    <Mail className="h-4 w-4 text-primary" />
+                                  ) : (
+                                    <MailOpen className="h-4 w-4 text-muted-foreground" />
+                                  )}
                                 </div>
-                                <p className={`text-sm truncate ${!message.is_read && activeTab === 'inbox' ? 'font-medium' : 'text-muted-foreground'}`}>
-                                  {message.subject}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate mt-1">
-                                  {message.content.substring(0, 50)}...
-                                </p>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className={`text-sm truncate ${threadUnread > 0 ? 'font-semibold' : ''}`}>
+                                      {activeTab === 'inbox' 
+                                        ? (message.sender_profile?.full_name || message.sender_profile?.email || 'Unknown')
+                                        : (message.recipient_profile?.full_name || message.recipient_profile?.email || 'Unknown')
+                                      }
+                                    </p>
+                                    <div className="flex items-center gap-1">
+                                      <ReadReceipt message={message} />
+                                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                        {format(new Date(message.created_at), 'MMM d')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className={`text-sm truncate ${threadUnread > 0 ? 'font-medium' : 'text-muted-foreground'}`}>
+                                    {message.subject}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-xs text-muted-foreground truncate flex-1">
+                                      {message.content.substring(0, 40)}...
+                                    </p>
+                                    {replyCount > 0 && (
+                                      <Badge variant="secondary" className="text-xs h-5">
+                                        {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                                      </Badge>
+                                    )}
+                                    {threadUnread > 0 && (
+                                      <Badge variant="destructive" className="text-xs h-5">
+                                        {threadUnread} new
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {(activeTab === 'inbox' ? inboxMessages : sentMessages).length === 0 && (
                           <div className="text-center py-12 text-muted-foreground">
                             <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -325,27 +448,23 @@ const Messages = () => {
               </Card>
             </div>
 
-            {/* Message Detail */}
+            {/* Message Detail - Threaded View */}
             <div className="lg:col-span-2">
               <Card className="h-[600px] flex flex-col">
                 {selectedMessage ? (
                   <>
-                    <CardHeader className="border-b">
+                    <CardHeader className="border-b flex-shrink-0">
                       <div className="flex items-start justify-between">
                         <div>
                           <CardTitle className="text-xl mb-1">{selectedMessage.subject}</CardTitle>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <User className="h-3 w-3" />
-                              {selectedMessage.sender_id === user?.id ? 'To: ' : 'From: '}
-                              {selectedMessage.sender_id === user?.id 
-                                ? (selectedMessage.recipient_profile?.full_name || selectedMessage.recipient_profile?.email)
-                                : (selectedMessage.sender_profile?.full_name || selectedMessage.sender_profile?.email)
-                              }
+                              Started by: {selectedMessage.sender_profile?.full_name || selectedMessage.sender_profile?.email}
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {format(new Date(selectedMessage.created_at), 'MMM d, yyyy h:mm a')}
+                              {format(new Date(selectedMessage.created_at), 'MMM d, yyyy')}
                             </span>
                           </div>
                           {selectedMessage.job && (
@@ -354,17 +473,92 @@ const Messages = () => {
                             </Badge>
                           )}
                         </div>
-                        {selectedMessage.recipient_id === user?.id && (
-                          <Button onClick={() => setReplyDialogOpen(true)}>
-                            <Reply className="h-4 w-4 mr-2" />
-                            Reply
-                          </Button>
-                        )}
                       </div>
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-auto p-6">
-                      <div className="prose prose-sm max-w-none">
-                        <p className="whitespace-pre-wrap">{selectedMessage.content}</p>
+                    <CardContent className="flex-1 overflow-hidden p-0 flex flex-col">
+                      {/* Thread Messages */}
+                      <ScrollArea className="flex-1 p-4">
+                        <div className="space-y-4">
+                          {/* Original Message */}
+                          <div className={`p-4 rounded-lg ${
+                            selectedMessage.sender_id === user?.id 
+                              ? 'bg-primary/10 ml-8' 
+                              : 'bg-muted mr-8'
+                          }`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-sm">
+                                {selectedMessage.sender_profile?.full_name || selectedMessage.sender_profile?.email}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <ReadReceipt message={selectedMessage} />
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(selectedMessage.created_at), 'MMM d, h:mm a')}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm">{selectedMessage.content}</p>
+                            {selectedMessage.read_at && selectedMessage.sender_id === user?.id && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Read {format(new Date(selectedMessage.read_at), 'MMM d, h:mm a')}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Replies */}
+                          {selectedMessage.replies?.map((reply) => (
+                            <div 
+                              key={reply.id}
+                              className={`p-4 rounded-lg ${
+                                reply.sender_id === user?.id 
+                                  ? 'bg-primary/10 ml-8' 
+                                  : 'bg-muted mr-8'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-sm">
+                                  {reply.sender_profile?.full_name || reply.sender_profile?.email}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <ReadReceipt message={reply} />
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(new Date(reply.created_at), 'MMM d, h:mm a')}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm">{reply.content}</p>
+                              {reply.read_at && reply.sender_id === user?.id && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Read {format(new Date(reply.read_at), 'MMM d, h:mm a')}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+
+                      {/* Reply Input */}
+                      <div className="border-t p-4 flex-shrink-0">
+                        <div className="flex gap-2">
+                          <Textarea
+                            placeholder="Type your reply..."
+                            rows={2}
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            className="flex-1 resize-none"
+                          />
+                          <Button 
+                            onClick={handleSendReply} 
+                            disabled={sendingReply || !replyContent.trim()}
+                            size="icon"
+                            className="h-auto"
+                          >
+                            {sendingReply ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </>
@@ -372,8 +566,8 @@ const Messages = () => {
                   <CardContent className="flex-1 flex items-center justify-center">
                     <div className="text-center text-muted-foreground">
                       <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">Select a message</p>
-                      <p className="text-sm">Choose a message from the list to view its contents</p>
+                      <p className="text-lg font-medium">Select a conversation</p>
+                      <p className="text-sm">Choose a message thread from the list to view</p>
                     </div>
                   </CardContent>
                 )}
@@ -382,51 +576,6 @@ const Messages = () => {
           </div>
         </div>
       </main>
-
-      {/* Reply Dialog */}
-      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              Reply to {selectedMessage?.sender_profile?.full_name || 'Sender'}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            <div className="p-3 rounded-lg bg-muted/50 text-sm">
-              <p className="font-medium mb-1">Re: {selectedMessage?.subject}</p>
-              <p className="text-muted-foreground text-xs">
-                Original message from {format(new Date(selectedMessage?.created_at || ''), 'MMM d, yyyy')}
-              </p>
-            </div>
-            
-            <Textarea
-              placeholder="Write your reply..."
-              rows={6}
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-            />
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSendReply} 
-              disabled={sendingReply}
-              className="gradient-bg"
-            >
-              {sendingReply ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              Send Reply
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

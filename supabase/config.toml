@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.notify-employer]
 verify_jwt = true
+
+[functions.notify-message]
+verify_jwt = true

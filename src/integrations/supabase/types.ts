@@ -120,6 +120,8 @@ export type Database = {
           id: string
           is_read: boolean | null
           job_id: string | null
+          parent_message_id: string | null
+          read_at: string | null
           recipient_id: string
           sender_id: string
           subject: string
@@ -130,6 +132,8 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           job_id?: string | null
+          parent_message_id?: string | null
+          read_at?: string | null
           recipient_id: string
           sender_id: string
           subject: string
@@ -140,6 +144,8 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           job_id?: string | null
+          parent_message_id?: string | null
+          read_at?: string | null
           recipient_id?: string
           sender_id?: string
           subject?: string
@@ -150,6 +156,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
