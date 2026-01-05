@@ -169,39 +169,48 @@ export type Database = {
       }
       profiles: {
         Row: {
+          application_notifications: boolean | null
           avatar_url: string | null
           company_name: string | null
           created_at: string | null
           email: string
+          email_notifications: boolean | null
           full_name: string | null
           id: string
           location: string | null
+          message_notifications: boolean | null
           phone: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          application_notifications?: boolean | null
           avatar_url?: string | null
           company_name?: string | null
           created_at?: string | null
           email: string
+          email_notifications?: boolean | null
           full_name?: string | null
           id?: string
           location?: string | null
+          message_notifications?: boolean | null
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          application_notifications?: boolean | null
           avatar_url?: string | null
           company_name?: string | null
           created_at?: string | null
           email?: string
+          email_notifications?: boolean | null
           full_name?: string | null
           id?: string
           location?: string | null
+          message_notifications?: boolean | null
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
