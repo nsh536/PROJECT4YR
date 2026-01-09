@@ -17,8 +17,13 @@ import {
   CheckCircle2,
   TrendingUp,
   Sparkles,
-  Star
+  Star,
+  Brain,
+  GraduationCap,
+  Lightbulb,
+  Target
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -43,12 +48,23 @@ interface Job {
   created_at: string;
   matchScore?: number;
   matchingSkills?: string[];
+  missingSkills?: string[];
+  skillMatch?: number;
+  experienceMatch?: number;
+  educationMatch?: number;
+  careerTrajectory?: number;
+  recommendation?: string;
+  growthPotential?: string;
+  aiPowered?: boolean;
 }
 
 interface Resume {
   id: string;
   title: string;
   skills: string[];
+  experience_years?: number;
+  education?: string;
+  summary?: string;
 }
 
 const jobTypes = ["All", "Full-time", "Part-time", "Contract", "Remote"];
@@ -64,6 +80,8 @@ const Jobs = () => {
   const [isApplying, setIsApplying] = useState(false);
   const [appliedJobs, setAppliedJobs] = useState<string[]>([]);
   const [showRecommended, setShowRecommended] = useState(true);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiPowered, setAiPowered] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -73,20 +91,79 @@ const Jobs = () => {
     }
   }, [user]);
 
-  // Calculate match scores when resume is loaded
+  // Fetch AI-powered job matches when resume is loaded
   useEffect(() => {
-    if (userResume?.skills?.length && jobs.length) {
-      const jobsWithScores = jobs.map(job => {
-        const { score, matchingSkills } = calculateMatchDetails(
-          job.skills_required || [], 
-          userResume.skills
-        );
-        return { ...job, matchScore: score, matchingSkills };
-      });
-      // Sort by match score for recommended view
-      setJobs(jobsWithScores.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)));
+    if (userResume?.skills?.length && jobs.length && !aiPowered) {
+      fetchAIMatches();
     }
-  }, [userResume]);
+  }, [userResume, jobs.length]);
+
+  const fetchAIMatches = async () => {
+    if (!userResume || isLoadingAI) return;
+    
+    setIsLoadingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('match-jobs', {
+        body: {
+          resumeId: userResume.id,
+          skills: userResume.skills,
+          experience_years: userResume.experience_years || 0,
+          education: userResume.education || '',
+          summary: userResume.summary || '',
+          title: userResume.title || ''
+        }
+      });
+
+      if (error) {
+        console.error('AI matching error:', error);
+        // Fall back to basic matching
+        applyBasicMatching();
+        return;
+      }
+
+      if (data?.jobs) {
+        const enrichedJobs = data.jobs.map((job: any) => ({
+          ...job,
+          matchScore: job.match_score,
+          matchingSkills: job.matching_skills,
+          missingSkills: job.missing_skills,
+          skillMatch: job.skill_match,
+          experienceMatch: job.experience_match,
+          educationMatch: job.education_match,
+          careerTrajectory: job.career_trajectory,
+          recommendation: job.recommendation,
+          growthPotential: job.growth_potential,
+          aiPowered: data.ai_powered
+        }));
+        setJobs(enrichedJobs);
+        setAiPowered(data.ai_powered);
+        
+        if (data.ai_powered) {
+          toast.success("AI-powered recommendations ready!", {
+            description: "Jobs ranked by skill, experience & career fit"
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch AI matches:', err);
+      applyBasicMatching();
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const applyBasicMatching = () => {
+    if (!userResume?.skills?.length) return;
+    
+    const jobsWithScores = jobs.map(job => {
+      const { score, matchingSkills } = calculateMatchDetails(
+        job.skills_required || [], 
+        userResume.skills
+      );
+      return { ...job, matchScore: score, matchingSkills };
+    });
+    setJobs(jobsWithScores.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)));
+  };
 
   const calculateMatchDetails = (jobSkills: string[], resumeSkills: string[]): { score: number; matchingSkills: string[] } => {
     if (!jobSkills?.length || !resumeSkills?.length) return { score: 0, matchingSkills: [] };
@@ -136,7 +213,7 @@ const Jobs = () => {
     
     const { data } = await supabase
       .from("resumes")
-      .select("id, title, skills")
+      .select("id, title, skills, experience_years, education, summary")
       .eq("user_id", user.id)
       .eq("status", "parsed")
       .order("created_at", { ascending: false })
@@ -277,13 +354,29 @@ const Jobs = () => {
           <div className="container mx-auto max-w-6xl">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/20">
-                  <Sparkles className="h-5 w-5 text-primary" />
+                <div className={`p-2 rounded-lg ${aiPowered ? 'bg-gradient-to-br from-primary/30 to-purple-500/30' : 'bg-primary/20'}`}>
+                  {aiPowered ? <Brain className="h-5 w-5 text-primary" /> : <Sparkles className="h-5 w-5 text-primary" />}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-foreground">Personalized for You</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-foreground">
+                      {aiPowered ? 'AI-Powered Recommendations' : 'Personalized for You'}
+                    </h2>
+                    {aiPowered && (
+                      <Badge variant="secondary" className="text-xs bg-gradient-to-r from-primary/20 to-purple-500/20">
+                        <Brain className="h-3 w-3 mr-1" />
+                        Smart Match
+                      </Badge>
+                    )}
+                    {isLoadingAI && (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    Jobs matched to your resume skills ({userResume.skills?.length || 0} skills detected)
+                    {aiPowered 
+                      ? 'Analyzing skills, experience, education & career trajectory'
+                      : `Jobs matched to your resume skills (${userResume.skills?.length || 0} skills detected)`
+                    }
                   </p>
                 </div>
               </div>
@@ -436,18 +529,111 @@ const Jobs = () => {
                             )}
                           </div>
                           
-                          {/* Match progress bar */}
+                          {/* AI-Powered Match Breakdown */}
                           {userResume && job.matchScore !== undefined && job.matchScore > 0 && (
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Skill Match</span>
-                                <span className="font-medium">{job.matchingSkills?.length || 0}/{job.skills_required.length} skills</span>
+                            <TooltipProvider>
+                              <div className="space-y-2">
+                                {/* Overall Progress */}
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground flex items-center gap-1">
+                                    {job.aiPowered && <Brain className="h-3 w-3" />}
+                                    Overall Match
+                                  </span>
+                                  <span className="font-medium">{job.matchScore}%</span>
+                                </div>
+                                <Progress 
+                                  value={job.matchScore} 
+                                  className="h-1.5"
+                                />
+
+                                {/* Detailed AI Breakdown */}
+                                {job.aiPowered && job.skillMatch !== undefined && (
+                                  <div className="grid grid-cols-4 gap-1 pt-2">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="text-center cursor-help">
+                                          <div className="text-xs text-muted-foreground mb-1">
+                                            <Target className="h-3 w-3 mx-auto" />
+                                          </div>
+                                          <div className={`text-xs font-bold ${job.skillMatch >= 70 ? 'text-green-500' : job.skillMatch >= 40 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                                            {job.skillMatch}%
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground">Skills</div>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Skill Match: {job.skillMatch}%</p>
+                                        <p className="text-xs text-muted-foreground">How your skills align with requirements</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="text-center cursor-help">
+                                          <div className="text-xs text-muted-foreground mb-1">
+                                            <Briefcase className="h-3 w-3 mx-auto" />
+                                          </div>
+                                          <div className={`text-xs font-bold ${job.experienceMatch && job.experienceMatch >= 70 ? 'text-green-500' : job.experienceMatch && job.experienceMatch >= 40 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                                            {job.experienceMatch}%
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground">Experience</div>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Experience Match: {job.experienceMatch}%</p>
+                                        <p className="text-xs text-muted-foreground">Your experience level vs. requirements</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="text-center cursor-help">
+                                          <div className="text-xs text-muted-foreground mb-1">
+                                            <GraduationCap className="h-3 w-3 mx-auto" />
+                                          </div>
+                                          <div className={`text-xs font-bold ${job.educationMatch && job.educationMatch >= 70 ? 'text-green-500' : job.educationMatch && job.educationMatch >= 40 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                                            {job.educationMatch}%
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground">Education</div>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Education Match: {job.educationMatch}%</p>
+                                        <p className="text-xs text-muted-foreground">Educational background relevance</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="text-center cursor-help">
+                                          <div className="text-xs text-muted-foreground mb-1">
+                                            <TrendingUp className="h-3 w-3 mx-auto" />
+                                          </div>
+                                          <div className={`text-xs font-bold ${job.careerTrajectory && job.careerTrajectory >= 70 ? 'text-green-500' : job.careerTrajectory && job.careerTrajectory >= 40 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                                            {job.careerTrajectory}%
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground">Career Fit</div>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Career Trajectory: {job.careerTrajectory}%</p>
+                                        <p className="text-xs text-muted-foreground">How this fits your career path</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                )}
+
+                                {/* AI Recommendation */}
+                                {job.aiPowered && job.recommendation && (
+                                  <div className="mt-2 p-2 bg-muted/50 rounded-md">
+                                    <div className="flex items-start gap-1.5">
+                                      <Lightbulb className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                                      <p className="text-xs text-muted-foreground">{job.recommendation}</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <Progress 
-                                value={job.matchScore} 
-                                className="h-1.5"
-                              />
-                            </div>
+                            </TooltipProvider>
                           )}
                         </div>
                       )}
