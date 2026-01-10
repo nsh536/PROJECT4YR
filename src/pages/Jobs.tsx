@@ -26,7 +26,11 @@ import {
   Home,
   Timer,
   FileText,
-  Building
+  Building,
+  User,
+  Users,
+  Crown,
+  Award
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +52,7 @@ interface Job {
   job_type: string;
   salary_min: number | null;
   salary_max: number | null;
+  experience_min: number | null;
   description: string;
   skills_required: string[];
   created_at: string;
@@ -73,6 +78,7 @@ interface Resume {
 }
 
 const jobTypes = ["All", "Full-time", "Part-time", "Contract", "Remote"];
+const experienceLevels = ["All", "Entry", "Mid", "Senior", "Lead"];
 
 // Job type configuration with icons and colors
 const jobTypeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>, className: string }> = {
@@ -94,6 +100,43 @@ const jobTypeConfig: Record<string, { icon: React.ComponentType<{ className?: st
   },
 };
 
+// Experience level configuration with icons and colors
+const experienceLevelConfig: Record<string, { icon: React.ComponentType<{ className?: string }>, className: string, minYears: number, maxYears: number }> = {
+  "Entry": { 
+    icon: User, 
+    className: "bg-[hsl(var(--exp-entry))] text-[hsl(var(--exp-entry-foreground))] border-transparent hover:bg-[hsl(var(--exp-entry))]/90",
+    minYears: 0,
+    maxYears: 2
+  },
+  "Mid": { 
+    icon: Users, 
+    className: "bg-[hsl(var(--exp-mid))] text-[hsl(var(--exp-mid-foreground))] border-transparent hover:bg-[hsl(var(--exp-mid))]/90",
+    minYears: 2,
+    maxYears: 5
+  },
+  "Senior": { 
+    icon: Award, 
+    className: "bg-[hsl(var(--exp-senior))] text-[hsl(var(--exp-senior-foreground))] border-transparent hover:bg-[hsl(var(--exp-senior))]/90",
+    minYears: 5,
+    maxYears: 10
+  },
+  "Lead": { 
+    icon: Crown, 
+    className: "bg-[hsl(var(--exp-lead))] text-[hsl(var(--exp-lead-foreground))] border-transparent hover:bg-[hsl(var(--exp-lead))]/90",
+    minYears: 10,
+    maxYears: Infinity
+  },
+};
+
+// Helper to determine experience level from years
+const getExperienceLevel = (experienceMin: number | null): string => {
+  const years = experienceMin || 0;
+  if (years >= 10) return "Lead";
+  if (years >= 5) return "Senior";
+  if (years >= 2) return "Mid";
+  return "Entry";
+};
+
 const MAX_SALARY = 300000;
 
 const Jobs = () => {
@@ -110,6 +153,7 @@ const Jobs = () => {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiPowered, setAiPowered] = useState(false);
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, MAX_SALARY]);
+  const [selectedExperience, setSelectedExperience] = useState("All");
 
   useEffect(() => {
     fetchJobs();
@@ -342,7 +386,11 @@ const Jobs = () => {
       (salaryRange[0] === 0 && salaryRange[1] === MAX_SALARY) || // No filter applied
       (jobMinSalary <= salaryRange[1] && jobMaxSalary >= salaryRange[0]);
     
-    return matchesType && matchesSearch && matchesSalary;
+    // Experience level filter
+    const jobExpLevel = getExperienceLevel(job.experience_min);
+    const matchesExperience = selectedExperience === "All" || jobExpLevel === selectedExperience;
+    
+    return matchesType && matchesSearch && matchesSalary && matchesExperience;
   });
 
   const formatSalary = (min: number | null, max: number | null) => {
@@ -463,7 +511,7 @@ const Jobs = () => {
                   </Button>
                 );
               })}
-              {(selectedType !== "All" || searchQuery || salaryRange[0] > 0 || salaryRange[1] < MAX_SALARY) && (
+              {(selectedType !== "All" || searchQuery || salaryRange[0] > 0 || salaryRange[1] < MAX_SALARY || selectedExperience !== "All") && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -471,6 +519,7 @@ const Jobs = () => {
                     setSelectedType("All"); 
                     setSearchQuery(""); 
                     setSalaryRange([0, MAX_SALARY]);
+                    setSelectedExperience("All");
                   }}
                   className="text-destructive"
                 >
@@ -478,6 +527,28 @@ const Jobs = () => {
                   Clear All
                 </Button>
               )}
+            </div>
+
+            {/* Experience Level Filter */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Briefcase className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground mr-2">Experience:</span>
+              {experienceLevels.map((level) => {
+                const config = experienceLevelConfig[level];
+                const LevelIcon = config?.icon;
+                return (
+                  <Button
+                    key={level}
+                    variant={selectedExperience === level ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedExperience(level)}
+                    className={selectedExperience === level && config ? config.className : ""}
+                  >
+                    {LevelIcon && <LevelIcon className="h-4 w-4 mr-1" />}
+                    {level}
+                  </Button>
+                );
+              })}
             </div>
 
             {/* Salary Range Filter */}
@@ -555,18 +626,34 @@ const Jobs = () => {
                           <h3 className="text-lg font-semibold">{job.title}</h3>
                           <p className="text-muted-foreground">{job.company}</p>
                         </div>
-                        {(() => {
-                          const config = jobTypeConfig[job.job_type];
-                          const TypeIcon = config?.icon;
-                          return (
-                            <Badge 
-                              className={config ? config.className : "bg-secondary text-secondary-foreground"}
-                            >
-                              {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
-                              {job.job_type}
-                            </Badge>
-                          );
-                        })()}
+                        <div className="flex flex-col gap-1.5 items-end">
+                          {(() => {
+                            const config = jobTypeConfig[job.job_type];
+                            const TypeIcon = config?.icon;
+                            return (
+                              <Badge 
+                                className={config ? config.className : "bg-secondary text-secondary-foreground"}
+                              >
+                                {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
+                                {job.job_type}
+                              </Badge>
+                            );
+                          })()}
+                          {(() => {
+                            const expLevel = getExperienceLevel(job.experience_min);
+                            const config = experienceLevelConfig[expLevel];
+                            const LevelIcon = config?.icon;
+                            return (
+                              <Badge 
+                                variant="outline"
+                                className={config ? config.className : "bg-secondary text-secondary-foreground"}
+                              >
+                                {LevelIcon && <LevelIcon className="h-3 w-3 mr-1" />}
+                                {expLevel}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">

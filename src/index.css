@@ -65,6 +65,16 @@
     --job-contract-foreground: 0 0% 100%;
     --job-fulltime: 262 83% 58%;
     --job-fulltime-foreground: 0 0% 100%;
+
+    /* Experience level badge colors */
+    --exp-entry: 142 71% 45%;
+    --exp-entry-foreground: 0 0% 100%;
+    --exp-mid: 199 89% 48%;
+    --exp-mid-foreground: 0 0% 100%;
+    --exp-senior: 262 83% 58%;
+    --exp-senior-foreground: 0 0% 100%;
+    --exp-lead: 339 90% 51%;
+    --exp-lead-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -118,6 +128,16 @@
     --job-contract-foreground: 0 0% 100%;
     --job-fulltime: 262 83% 63%;
     --job-fulltime-foreground: 0 0% 100%;
+
+    /* Experience level badge colors (dark mode) */
+    --exp-entry: 142 71% 50%;
+    --exp-entry-foreground: 0 0% 100%;
+    --exp-mid: 199 89% 53%;
+    --exp-mid-foreground: 0 0% 100%;
+    --exp-senior: 262 83% 63%;
+    --exp-senior-foreground: 0 0% 100%;
+    --exp-lead: 339 90% 56%;
+    --exp-lead-foreground: 0 0% 100%;
   }
 }
 
