@@ -55,6 +55,16 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 199 89% 48%;
+
+    /* Job type badge colors */
+    --job-remote: 142 76% 36%;
+    --job-remote-foreground: 0 0% 100%;
+    --job-parttime: 217 91% 60%;
+    --job-parttime-foreground: 0 0% 100%;
+    --job-contract: 25 95% 53%;
+    --job-contract-foreground: 0 0% 100%;
+    --job-fulltime: 262 83% 58%;
+    --job-fulltime-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -98,6 +108,16 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 215 28% 17%;
     --sidebar-ring: 199 89% 48%;
+
+    /* Job type badge colors (dark mode) */
+    --job-remote: 142 76% 42%;
+    --job-remote-foreground: 0 0% 100%;
+    --job-parttime: 217 91% 65%;
+    --job-parttime-foreground: 0 0% 100%;
+    --job-contract: 25 95% 58%;
+    --job-contract-foreground: 0 0% 100%;
+    --job-fulltime: 262 83% 63%;
+    --job-fulltime-foreground: 0 0% 100%;
   }
 }
 

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { 
   Filter, 
   X, 
@@ -21,7 +22,11 @@ import {
   Brain,
   GraduationCap,
   Lightbulb,
-  Target
+  Target,
+  Home,
+  Timer,
+  FileText,
+  Building
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +74,28 @@ interface Resume {
 
 const jobTypes = ["All", "Full-time", "Part-time", "Contract", "Remote"];
 
+// Job type configuration with icons and colors
+const jobTypeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>, className: string }> = {
+  "Remote": { 
+    icon: Home, 
+    className: "bg-[hsl(var(--job-remote))] text-[hsl(var(--job-remote-foreground))] border-transparent hover:bg-[hsl(var(--job-remote))]/90" 
+  },
+  "Part-time": { 
+    icon: Timer, 
+    className: "bg-[hsl(var(--job-parttime))] text-[hsl(var(--job-parttime-foreground))] border-transparent hover:bg-[hsl(var(--job-parttime))]/90" 
+  },
+  "Contract": { 
+    icon: FileText, 
+    className: "bg-[hsl(var(--job-contract))] text-[hsl(var(--job-contract-foreground))] border-transparent hover:bg-[hsl(var(--job-contract))]/90" 
+  },
+  "Full-time": { 
+    icon: Building, 
+    className: "bg-[hsl(var(--job-fulltime))] text-[hsl(var(--job-fulltime-foreground))] border-transparent hover:bg-[hsl(var(--job-fulltime))]/90" 
+  },
+};
+
+const MAX_SALARY = 300000;
+
 const Jobs = () => {
   const { user, profile } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -82,6 +109,7 @@ const Jobs = () => {
   const [showRecommended, setShowRecommended] = useState(true);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiPowered, setAiPowered] = useState(false);
+  const [salaryRange, setSalaryRange] = useState<[number, number]>([0, MAX_SALARY]);
 
   useEffect(() => {
     fetchJobs();
@@ -306,7 +334,15 @@ const Jobs = () => {
       (job.skills_required || []).some(skill => 
         skill.toLowerCase().includes(searchQuery.toLowerCase())
       );
-    return matchesType && matchesSearch;
+    
+    // Salary filter
+    const jobMinSalary = job.salary_min || 0;
+    const jobMaxSalary = job.salary_max || MAX_SALARY;
+    const matchesSalary = 
+      (salaryRange[0] === 0 && salaryRange[1] === MAX_SALARY) || // No filter applied
+      (jobMinSalary <= salaryRange[1] && jobMaxSalary >= salaryRange[0]);
+    
+    return matchesType && matchesSearch && matchesSalary;
   });
 
   const formatSalary = (min: number | null, max: number | null) => {
@@ -406,30 +442,68 @@ const Jobs = () => {
       <section className="py-10 px-4">
         <div className="container mx-auto max-w-6xl">
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 mb-8">
-            <Filter className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground mr-2">Filter:</span>
-            {jobTypes.map((type) => (
-              <Button
-                key={type}
-                variant={selectedType === type ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedType(type)}
-              >
-                {type}
-              </Button>
-            ))}
-            {(selectedType !== "All" || searchQuery) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSelectedType("All"); setSearchQuery(""); }}
-                className="text-destructive"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Clear
-              </Button>
-            )}
+          <div className="space-y-4 mb-8">
+            {/* Job Type Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Filter className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground mr-2">Type:</span>
+              {jobTypes.map((type) => {
+                const config = jobTypeConfig[type];
+                const TypeIcon = config?.icon;
+                return (
+                  <Button
+                    key={type}
+                    variant={selectedType === type ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedType(type)}
+                    className={selectedType === type && config ? config.className : ""}
+                  >
+                    {TypeIcon && <TypeIcon className="h-4 w-4 mr-1" />}
+                    {type}
+                  </Button>
+                );
+              })}
+              {(selectedType !== "All" || searchQuery || salaryRange[0] > 0 || salaryRange[1] < MAX_SALARY) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { 
+                    setSelectedType("All"); 
+                    setSearchQuery(""); 
+                    setSalaryRange([0, MAX_SALARY]);
+                  }}
+                  className="text-destructive"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            {/* Salary Range Filter */}
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/30 rounded-lg">
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Salary Range:</span>
+              <div className="flex-1 max-w-md">
+                <Slider
+                  value={salaryRange}
+                  onValueChange={(value) => setSalaryRange(value as [number, number])}
+                  min={0}
+                  max={MAX_SALARY}
+                  step={5000}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium text-foreground">
+                  ${salaryRange[0].toLocaleString()}
+                </span>
+                <span className="text-muted-foreground">-</span>
+                <span className="font-medium text-foreground">
+                  ${salaryRange[1].toLocaleString()}{salaryRange[1] === MAX_SALARY && "+"}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Results Count */}
@@ -481,7 +555,18 @@ const Jobs = () => {
                           <h3 className="text-lg font-semibold">{job.title}</h3>
                           <p className="text-muted-foreground">{job.company}</p>
                         </div>
-                        <Badge variant="secondary">{job.job_type}</Badge>
+                        {(() => {
+                          const config = jobTypeConfig[job.job_type];
+                          const TypeIcon = config?.icon;
+                          return (
+                            <Badge 
+                              className={config ? config.className : "bg-secondary text-secondary-foreground"}
+                            >
+                              {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
+                              {job.job_type}
+                            </Badge>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
