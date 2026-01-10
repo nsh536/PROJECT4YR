@@ -30,7 +30,9 @@ import {
   User,
   Users,
   Crown,
-  Award
+  Award,
+  Bookmark,
+  BookmarkCheck
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,12 +156,15 @@ const Jobs = () => {
   const [aiPowered, setAiPowered] = useState(false);
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, MAX_SALARY]);
   const [selectedExperience, setSelectedExperience] = useState("All");
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [savingJob, setSavingJob] = useState<string | null>(null);
 
   useEffect(() => {
     fetchJobs();
     if (user) {
       fetchUserResume();
       fetchAppliedJobs();
+      fetchSavedJobs();
     }
   }, [user]);
 
@@ -304,6 +309,54 @@ const Jobs = () => {
       .eq("user_id", user.id);
 
     setAppliedJobs(data?.map(a => a.job_id) || []);
+  };
+
+  const fetchSavedJobs = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("saved_jobs")
+      .select("job_id")
+      .eq("user_id", user.id);
+
+    setSavedJobs(data?.map(s => s.job_id) || []);
+  };
+
+  const toggleSaveJob = async (jobId: string) => {
+    if (!user) {
+      toast.error("Please sign in to save jobs");
+      return;
+    }
+
+    setSavingJob(jobId);
+    const isSaved = savedJobs.includes(jobId);
+
+    try {
+      if (isSaved) {
+        const { error } = await supabase
+          .from("saved_jobs")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("job_id", jobId);
+
+        if (error) throw error;
+        setSavedJobs(savedJobs.filter(id => id !== jobId));
+        toast.success("Job removed from saved");
+      } else {
+        const { error } = await supabase
+          .from("saved_jobs")
+          .insert({ user_id: user.id, job_id: jobId });
+
+        if (error) throw error;
+        setSavedJobs([...savedJobs, jobId]);
+        toast.success("Job saved for later");
+      }
+    } catch (error: any) {
+      console.error("Save job error:", error);
+      toast.error(error.message || "Failed to save job");
+    } finally {
+      setSavingJob(null);
+    }
   };
 
   const calculateMatchScore = (jobSkills: string[], resumeSkills: string[]): number => {
@@ -826,6 +879,21 @@ const Jobs = () => {
                             {!user ? "Sign in to Apply" : profile?.role === 'employer' ? "Employers can't apply" : "Apply Now"}
                           </Button>
                         )}
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => toggleSaveJob(job.id)}
+                          disabled={savingJob === job.id}
+                          className={savedJobs.includes(job.id) ? "text-primary border-primary" : ""}
+                        >
+                          {savingJob === job.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : savedJobs.includes(job.id) ? (
+                            <BookmarkCheck className="h-4 w-4" />
+                          ) : (
+                            <Bookmark className="h-4 w-4" />
+                          )}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
