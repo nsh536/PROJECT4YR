@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Filter, 
   X, 
@@ -33,7 +34,9 @@ import {
   Award,
   Bookmark,
   BookmarkCheck,
-  Search
+  Search,
+  ClipboardList,
+  FolderHeart
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -161,6 +164,7 @@ const Jobs = () => {
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [savingJob, setSavingJob] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"all" | "saved" | "applied">("all");
 
   // Extract unique locations from jobs
   const uniqueLocations = [...new Set(jobs.map(job => job.location))].filter(Boolean).sort();
@@ -456,6 +460,13 @@ const Jobs = () => {
     return matchesType && matchesSearch && matchesSalary && matchesExperience && matchesLocation;
   });
 
+  // Filter based on view mode
+  const displayedJobs = viewMode === "saved" 
+    ? filteredJobs.filter(job => savedJobs.includes(job.id))
+    : viewMode === "applied"
+    ? filteredJobs.filter(job => appliedJobs.includes(job.id))
+    : filteredJobs;
+
   const formatSalary = (min: number | null, max: number | null) => {
     if (!min && !max) return null;
     if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
@@ -545,6 +556,40 @@ const Jobs = () => {
                 </Button>
               </div>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* View Mode Tabs */}
+      {user && profile?.role === 'student' && (
+        <section className="py-4 px-4 border-b bg-muted/20">
+          <div className="container mx-auto max-w-6xl">
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "all" | "saved" | "applied")}>
+              <TabsList className="grid w-full max-w-md grid-cols-3">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  All Jobs
+                </TabsTrigger>
+                <TabsTrigger value="saved" className="flex items-center gap-2">
+                  <FolderHeart className="h-4 w-4" />
+                  Saved
+                  {savedJobs.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 flex items-center justify-center text-xs">
+                      {savedJobs.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="applied" className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Applied
+                  {appliedJobs.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 flex items-center justify-center text-xs">
+                      {appliedJobs.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </section>
       )}
@@ -676,10 +721,14 @@ const Jobs = () => {
           {/* Results Count */}
           <div className="flex items-center justify-between mb-6">
             <p className="text-muted-foreground">
-              {userResume && showRecommended ? (
-                <>Showing <span className="font-semibold text-foreground">{filteredJobs.filter(j => (j.matchScore || 0) > 0).length}</span> matching jobs</>
+              {viewMode === "saved" ? (
+                <>Showing <span className="font-semibold text-foreground">{displayedJobs.length}</span> saved jobs</>
+              ) : viewMode === "applied" ? (
+                <>Showing <span className="font-semibold text-foreground">{displayedJobs.length}</span> applied jobs</>
+              ) : userResume && showRecommended ? (
+                <>Showing <span className="font-semibold text-foreground">{displayedJobs.filter(j => (j.matchScore || 0) > 0).length}</span> matching jobs</>
               ) : (
-                <>Showing <span className="font-semibold text-foreground">{filteredJobs.length}</span> jobs</>
+                <>Showing <span className="font-semibold text-foreground">{displayedJobs.length}</span> jobs</>
               )}
             </p>
           </div>
@@ -691,12 +740,49 @@ const Jobs = () => {
             </div>
           ) : (
             <>
-              {/* Job Listings */}
-              <div className="grid lg:grid-cols-2 gap-6">
-                {(userResume && showRecommended 
-                  ? filteredJobs.filter(j => (j.matchScore || 0) > 0)
-                  : filteredJobs
-                ).map((job, index) => (
+              {/* Empty State for Saved/Applied */}
+              {displayedJobs.length === 0 && (viewMode === "saved" || viewMode === "applied") ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  {viewMode === "saved" ? (
+                    <>
+                      <FolderHeart className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No saved jobs yet</h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Click the bookmark icon on any job to save it for later review.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setViewMode("all")}
+                      >
+                        Browse Jobs
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardList className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No applications yet</h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Start applying to jobs that match your skills and experience.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setViewMode("all")}
+                      >
+                        Browse Jobs
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Job Listings */}
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    {(userResume && showRecommended && viewMode === "all"
+                      ? displayedJobs.filter(j => (j.matchScore || 0) > 0)
+                      : displayedJobs
+                    ).map((job, index) => (
                   <Card 
                     key={job.id} 
                     className={`border-border/50 hover:shadow-lg transition-all animate-fade-up relative ${
@@ -941,16 +1027,18 @@ const Jobs = () => {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
-
-              {filteredJobs.length === 0 && (
-                <div className="text-center py-20">
-                  <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-4 flex items-center justify-center">
-                    <Briefcase className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="font-display font-semibold text-xl mb-2">No jobs found</h3>
-                  <p className="text-muted-foreground">Try adjusting your filters or check back later</p>
-                </div>
+
+                  {displayedJobs.length === 0 && viewMode === "all" && (
+                    <div className="text-center py-20">
+                      <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-4 flex items-center justify-center">
+                        <Briefcase className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="font-display font-semibold text-xl mb-2">No jobs found</h3>
+                      <p className="text-muted-foreground">Try adjusting your filters or check back later</p>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
