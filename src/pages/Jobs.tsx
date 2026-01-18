@@ -32,8 +32,10 @@ import {
   Crown,
   Award,
   Bookmark,
-  BookmarkCheck
+  BookmarkCheck,
+  Search
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -158,6 +160,10 @@ const Jobs = () => {
   const [selectedExperience, setSelectedExperience] = useState("All");
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [savingJob, setSavingJob] = useState<string | null>(null);
+  const [locationSearch, setLocationSearch] = useState("");
+
+  // Extract unique locations from jobs
+  const uniqueLocations = [...new Set(jobs.map(job => job.location))].filter(Boolean).sort();
 
   useEffect(() => {
     fetchJobs();
@@ -443,7 +449,11 @@ const Jobs = () => {
     const jobExpLevel = getExperienceLevel(job.experience_min);
     const matchesExperience = selectedExperience === "All" || jobExpLevel === selectedExperience;
     
-    return matchesType && matchesSearch && matchesSalary && matchesExperience;
+    // Location filter
+    const matchesLocation = !locationSearch || 
+      job.location.toLowerCase().includes(locationSearch.toLowerCase());
+    
+    return matchesType && matchesSearch && matchesSalary && matchesExperience && matchesLocation;
   });
 
   const formatSalary = (min: number | null, max: number | null) => {
@@ -564,7 +574,7 @@ const Jobs = () => {
                   </Button>
                 );
               })}
-              {(selectedType !== "All" || searchQuery || salaryRange[0] > 0 || salaryRange[1] < MAX_SALARY || selectedExperience !== "All") && (
+            {(selectedType !== "All" || searchQuery || salaryRange[0] > 0 || salaryRange[1] < MAX_SALARY || selectedExperience !== "All" || locationSearch) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -573,6 +583,7 @@ const Jobs = () => {
                     setSearchQuery(""); 
                     setSalaryRange([0, MAX_SALARY]);
                     setSelectedExperience("All");
+                    setLocationSearch("");
                   }}
                   className="text-destructive"
                 >
@@ -602,6 +613,38 @@ const Jobs = () => {
                   </Button>
                 );
               })}
+            </div>
+
+            {/* Location Filter */}
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/30 rounded-lg">
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Location:</span>
+              <div className="flex-1 max-w-md relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search city or region..."
+                  value={locationSearch}
+                  onChange={(e) => setLocationSearch(e.target.value)}
+                  className="pl-9 bg-background"
+                  list="location-suggestions"
+                />
+                <datalist id="location-suggestions">
+                  {uniqueLocations.map((location) => (
+                    <option key={location} value={location} />
+                  ))}
+                </datalist>
+              </div>
+              {locationSearch && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocationSearch("")}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
             {/* Salary Range Filter */}
