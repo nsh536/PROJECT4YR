@@ -36,7 +36,10 @@ import {
   BookmarkCheck,
   Search,
   ClipboardList,
-  FolderHeart
+  FolderHeart,
+  Eye,
+  UserCheck,
+  XCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -161,10 +164,11 @@ const Jobs = () => {
   const [aiPowered, setAiPowered] = useState(false);
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, MAX_SALARY]);
   const [selectedExperience, setSelectedExperience] = useState("All");
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [savingJob, setSavingJob] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState("");
   const [viewMode, setViewMode] = useState<"all" | "saved" | "applied">("all");
+  const [applicationStatuses, setApplicationStatuses] = useState<Record<string, string>>({});
 
   // Extract unique locations from jobs
   const uniqueLocations = [...new Set(jobs.map(job => job.location))].filter(Boolean).sort();
@@ -310,15 +314,22 @@ const Jobs = () => {
     setUserResume(data);
   };
 
-  const fetchAppliedJobs = async () => {
+const fetchAppliedJobs = async () => {
     if (!user) return;
     
     const { data } = await supabase
       .from("applications")
-      .select("job_id")
+      .select("job_id, status")
       .eq("user_id", user.id);
 
     setAppliedJobs(data?.map(a => a.job_id) || []);
+    
+    // Build status map
+    const statusMap: Record<string, string> = {};
+    data?.forEach(a => {
+      statusMap[a.job_id] = a.status || 'pending';
+    });
+    setApplicationStatuses(statusMap);
   };
 
   const fetchSavedJobs = async () => {
@@ -474,7 +485,7 @@ const Jobs = () => {
     return `Up to $${max?.toLocaleString()}`;
   };
 
-  const getTimeAgo = (date: string) => {
+const getTimeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     if (days === 0) return "Today";
@@ -482,6 +493,35 @@ const Jobs = () => {
     if (days < 7) return `${days} days ago`;
     if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
     return `${Math.floor(days / 30)} months ago`;
+  };
+
+  // Application status configuration
+  const applicationStatusConfig: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; className: string }> = {
+    pending: {
+      label: "Pending",
+      icon: Clock,
+      className: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30"
+    },
+    reviewed: {
+      label: "Reviewed",
+      icon: Eye,
+      className: "bg-blue-500/20 text-blue-600 border-blue-500/30"
+    },
+    interview: {
+      label: "Interview",
+      icon: UserCheck,
+      className: "bg-green-500/20 text-green-600 border-green-500/30"
+    },
+    rejected: {
+      label: "Rejected",
+      icon: XCircle,
+      className: "bg-red-500/20 text-red-600 border-red-500/30"
+    }
+  };
+
+  const getApplicationStatus = (jobId: string) => {
+    const status = applicationStatuses[jobId] || 'pending';
+    return applicationStatusConfig[status] || applicationStatusConfig.pending;
   };
 
   return (
@@ -994,10 +1034,25 @@ const Jobs = () => {
 
                       <div className="flex gap-2">
                         {appliedJobs.includes(job.id) ? (
-                          <Button variant="outline" className="flex-1" disabled>
-                            <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                            Applied
-                          </Button>
+                          (() => {
+                            const statusInfo = getApplicationStatus(job.id);
+                            const StatusIcon = statusInfo.icon;
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="outline" className={`flex-1 ${statusInfo.className}`} disabled>
+                                      <StatusIcon className="h-4 w-4 mr-2" />
+                                      {statusInfo.label}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Application Status: {statusInfo.label}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })()
                         ) : (
                           <Button 
                             className="flex-1"
