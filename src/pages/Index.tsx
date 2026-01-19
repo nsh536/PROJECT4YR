@@ -2,8 +2,11 @@ import { Header } from "@/components/Header";
 import { JobSearchForm } from "@/components/JobSearchForm";
 import { JobCard } from "@/components/JobCard";
 import { Button } from "@/components/ui/button";
-import { jobs } from "@/data/mockData";
-import { Link } from "react-router-dom";
+import { jobs, Job } from "@/data/mockData";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowRight, 
   Briefcase, 
@@ -13,8 +16,18 @@ import {
   CheckCircle,
   TrendingUp,
   Globe,
-  Zap
+  Zap,
+  Upload,
+  LogIn
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const stats = [
   { icon: Briefcase, value: "10,000+", label: "Active Jobs" },
@@ -47,6 +60,44 @@ const features = [
 ];
 
 const Index = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [hasResume, setHasResume] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+
+  useEffect(() => {
+    const checkResume = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("resumes")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+        setHasResume(data && data.length > 0);
+      }
+    };
+    checkResume();
+  }, [user]);
+
+  const handleApply = (job: Job) => {
+    setSelectedJob(job);
+    
+    if (!user) {
+      setShowLoginDialog(true);
+      return;
+    }
+    
+    if (!hasResume) {
+      setShowResumeDialog(true);
+      return;
+    }
+    
+    // User is logged in and has resume - navigate to jobs page to apply
+    navigate("/jobs");
+  };
+
   return (
     <div className="min-h-screen gradient-hero">
       <Header />
@@ -144,7 +195,7 @@ const Index = () => {
                 className="animate-fade-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <JobCard job={job} />
+                <JobCard job={job} onApply={handleApply} />
               </div>
             ))}
           </div>
@@ -212,6 +263,62 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Resume Upload Dialog */}
+      <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Upload className="h-6 w-6 text-primary" />
+            </div>
+            <DialogTitle className="text-center">Upload Your Resume First</DialogTitle>
+            <DialogDescription className="text-center">
+              To apply for <span className="font-semibold text-foreground">{selectedJob?.title}</span> at {selectedJob?.company}, please upload your resume so employers can learn about your skills and experience.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowResumeDialog(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button 
+              variant="gradient" 
+              onClick={() => navigate("/resume")} 
+              className="flex-1"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Resume
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Login Dialog */}
+      <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <LogIn className="h-6 w-6 text-primary" />
+            </div>
+            <DialogTitle className="text-center">Sign In Required</DialogTitle>
+            <DialogDescription className="text-center">
+              Please sign in or create an account to apply for <span className="font-semibold text-foreground">{selectedJob?.title}</span> at {selectedJob?.company}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowLoginDialog(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button 
+              variant="gradient" 
+              onClick={() => navigate("/auth")} 
+              className="flex-1"
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign In
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
