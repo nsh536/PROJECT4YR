@@ -41,21 +41,29 @@ const features = [
     icon: Sparkles,
     title: "AI-Powered Matching",
     description: "Our intelligent algorithms match you with the perfect opportunities based on your skills and preferences.",
+    link: "/jobs",
+    buttonText: "Find Matches",
   },
   {
     icon: FileText,
     title: "Smart Resume Builder",
     description: "Create stunning resumes with AI assistance that highlight your strengths and get noticed by recruiters.",
+    link: "/resume",
+    buttonText: "Build Resume",
   },
   {
     icon: Zap,
     title: "Instant Applications",
     description: "Apply to multiple jobs with one click. Save time and increase your chances of landing interviews.",
+    link: "/jobs",
+    buttonText: "Browse Jobs",
   },
   {
     icon: CheckCircle,
     title: "Verified Employers",
     description: "All companies on our platform are verified, ensuring you only connect with legitimate opportunities.",
+    link: "/candidates",
+    buttonText: "View Talent",
   },
 ];
 
@@ -156,14 +164,19 @@ const Index = () => {
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className="gradient-card p-6 rounded-2xl border border-border hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-fade-up"
+                className="gradient-card p-6 rounded-2xl border border-border hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 animate-fade-up cursor-pointer group"
                 style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={() => navigate(feature.link)}
               >
                 <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-4 shadow-soft">
                   <feature.icon className="h-6 w-6 text-primary-foreground" />
                 </div>
-                <h3 className="font-display font-semibold text-lg mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm">{feature.description}</p>
+                <h3 className="font-display font-semibold text-lg mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
+                <p className="text-muted-foreground text-sm mb-4">{feature.description}</p>
+                <Button variant="outline" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  {feature.buttonText}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
             ))}
           </div>
