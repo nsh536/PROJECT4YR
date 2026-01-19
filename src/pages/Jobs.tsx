@@ -429,11 +429,25 @@ const fetchAppliedJobs = async () => {
       });
 
       if (notifyError) {
-        console.error("Notification error:", notifyError);
-        // Don't fail the application if notification fails
+        console.error("Employer notification error:", notifyError);
       }
 
-      toast.success("Application submitted! The employer has been notified.");
+      // Send confirmation email to applicant
+      const { error: applicantNotifyError } = await supabase.functions.invoke("notify-applicant", {
+        body: {
+          applicantName: profile?.full_name || user.email?.split('@')[0],
+          applicantEmail: user.email,
+          jobTitle: applyingTo.title,
+          company: applyingTo.company,
+          matchScore
+        }
+      });
+
+      if (applicantNotifyError) {
+        console.error("Applicant notification error:", applicantNotifyError);
+      }
+
+      toast.success("Application submitted! Check your email for confirmation.");
       setAppliedJobs([...appliedJobs, applyingTo.id]);
       setApplyingTo(null);
     } catch (error: any) {
