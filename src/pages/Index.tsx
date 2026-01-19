@@ -169,48 +169,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Featured Jobs */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex items-center justify-between mb-10">
-            <div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
-                Featured Jobs
-              </h2>
-              <p className="text-muted-foreground">Handpicked opportunities from top companies</p>
-            </div>
-            <Link to="/jobs">
-              <Button variant="outline" className="hidden md:flex">
-                View All Jobs
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            {jobs.slice(0, 4).map((job, index) => (
-              <div
-                key={job.id}
-                className="animate-fade-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <JobCard job={job} onApply={handleApply} />
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-10 md:hidden">
-            <Link to="/jobs">
-              <Button variant="gradient" size="lg">
-                View All Jobs
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-4xl">
