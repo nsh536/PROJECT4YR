@@ -82,6 +82,47 @@ const Applications = () => {
       return;
     }
     fetchApplications();
+
+    // Subscribe to real-time updates for this user's applications
+    const channel = supabase
+      .channel('applications-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'applications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Update the specific application in state
+          setApplications(prev => 
+            prev.map(app => 
+              app.id === payload.new.id 
+                ? { ...app, status: payload.new.status, match_score: payload.new.match_score }
+                : app
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'applications',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          // Refetch to get the full application with job details
+          fetchApplications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, profile]);
 
   const fetchApplications = async () => {
