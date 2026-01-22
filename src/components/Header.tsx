@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/jobs", label: "Find Jobs" },
   { href: "/applications", label: "My Applications", studentOnly: true },
+  { href: "/dashboard", label: "Dashboard", employerOnly: true },
   { href: "/candidates", label: "Find Talent", employerOnly: true },
   { href: "/resume", label: "My Resume", studentOnly: true },
 ];
