@@ -11,6 +11,7 @@ import Messages from "./pages/Messages";
 import Auth from "./pages/Auth";
 import ResumeUpload from "./pages/ResumeUpload";
 import Settings from "./pages/Settings";
+import Applications from "./pages/Applications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/resume" element={<ResumeUpload />} />
+            <Route path="/applications" element={<Applications />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
