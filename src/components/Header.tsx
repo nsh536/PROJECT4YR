@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -103,6 +104,7 @@ export function Header() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
+            <ThemeToggle />
             {user ? (
               <>
                 {/* Messages Icon */}
@@ -179,7 +181,8 @@ export function Header() {
                     {link.label}
                   </Link>
                 ))}
-              <div className="flex gap-2 mt-4 px-4">
+              <div className="flex items-center gap-2 mt-4 px-4">
+                <ThemeToggle />
                 {user ? (
                   <Button variant="outline" size="sm" className="flex-1" onClick={handleSignOut}>
                     <LogOut className="h-4 w-4 mr-2" />
