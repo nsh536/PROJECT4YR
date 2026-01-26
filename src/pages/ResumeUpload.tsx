@@ -160,14 +160,21 @@ export default function ResumeUpload() {
       setUploading(false);
       setParsing(true);
 
-      // Read file content for parsing
-      const fileContent = await file.text();
+      // Read file content for parsing (works best for text files)
+      let fileContent = '';
+      try {
+        fileContent = await file.text();
+      } catch (e) {
+        console.log('Could not read file as text, will use URL parsing');
+      }
 
-      // Call parse-resume function
+      // Call parse-resume function with both content and URL for better parsing
       const { error: parseError } = await supabase.functions.invoke('parse-resume', {
         body: {
           resumeId: resumeData.id,
-          fileContent: fileContent
+          fileContent: fileContent,
+          fileName: file.name,
+          fileUrl: publicUrl
         }
       });
 
@@ -253,8 +260,8 @@ export default function ResumeUpload() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-green-500/10">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      <div className="p-2 rounded-lg bg-accent/10">
+                        <CheckCircle className="h-5 w-5 text-accent" />
                       </div>
                       <div>
                         <CardTitle>{resume.title || 'Your Resume'}</CardTitle>

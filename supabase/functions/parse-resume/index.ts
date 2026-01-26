@@ -6,13 +6,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Extract text from PDF using pdf-parse alternative for Deno
+async function extractTextFromPDF(arrayBuffer: ArrayBuffer): Promise<string> {
+  // Convert to base64 for processing
+  const uint8Array = new Uint8Array(arrayBuffer);
+  let text = '';
+  
+  // Simple PDF text extraction - look for text between stream markers
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  const content = decoder.decode(uint8Array);
+  
+  // Extract text objects from PDF
+  const textMatches = content.match(/\(([^)]+)\)/g);
+  if (textMatches) {
+    text = textMatches
+      .map(match => match.slice(1, -1))
+      .filter(t => t.length > 1 && !/^[\x00-\x1F]+$/.test(t))
+      .join(' ');
+  }
+  
+  // Also try to extract from text streams
+  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+  let match;
+  while ((match = streamRegex.exec(content)) !== null) {
+    const streamContent = match[1];
+    // Look for readable text in streams
+    const readableText = streamContent.match(/[A-Za-z0-9\s.,!?;:'"()-]{10,}/g);
+    if (readableText) {
+      text += ' ' + readableText.join(' ');
+    }
+  }
+  
+  return text.trim();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { resumeId, fileContent } = await req.json();
+    const { resumeId, fileContent, fileName, fileUrl } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -23,9 +57,56 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('Parsing resume with AI:', resumeId);
+    console.log('Parsing resume with AI:', resumeId, 'File:', fileName);
 
-    const systemPrompt = `You are a resume parser. Extract the following information from the resume text and return it as JSON:
+    let textContent = fileContent || '';
+    
+    // If we have a file URL and the content looks like binary/garbled, fetch and parse
+    if (fileUrl && (!textContent || textContent.length < 50 || /[\x00-\x08\x0E-\x1F]/.test(textContent.substring(0, 100)))) {
+      console.log('Fetching file from URL for better parsing...');
+      try {
+        const fileResponse = await fetch(fileUrl);
+        if (fileResponse.ok) {
+          const arrayBuffer = await fileResponse.arrayBuffer();
+          const extension = fileName?.toLowerCase().split('.').pop() || '';
+          
+          if (extension === 'pdf') {
+            textContent = await extractTextFromPDF(arrayBuffer);
+            console.log('Extracted PDF text length:', textContent.length);
+          } else if (extension === 'txt') {
+            textContent = new TextDecoder().decode(arrayBuffer);
+          } else {
+            // For DOCX, try to extract XML content
+            const decoder = new TextDecoder('utf-8', { fatal: false });
+            const content = decoder.decode(new Uint8Array(arrayBuffer));
+            // Extract readable text from DOCX XML
+            const textMatches = content.match(/<w:t[^>]*>([^<]+)<\/w:t>/g);
+            if (textMatches) {
+              textContent = textMatches
+                .map(match => match.replace(/<[^>]+>/g, ''))
+                .join(' ');
+            }
+          }
+        }
+      } catch (fetchError) {
+        console.error('Error fetching file:', fetchError);
+      }
+    }
+
+    // Clean up the text content
+    textContent = textContent
+      .replace(/[^\x20-\x7E\n\r\t]/g, ' ')  // Remove non-printable chars
+      .replace(/\s+/g, ' ')  // Normalize whitespace
+      .trim();
+
+    if (textContent.length < 50) {
+      console.log('Warning: Extracted text is very short, using raw content');
+      textContent = fileContent || 'Unable to extract text from resume';
+    }
+
+    console.log('Text content preview:', textContent.substring(0, 500));
+
+    const systemPrompt = `You are an expert resume parser. Extract the following information from the resume text and return it as JSON:
 {
   "title": "Job title/position the candidate is seeking or currently holds",
   "summary": "Brief professional summary (2-3 sentences)",
@@ -42,8 +123,11 @@ serve(async (req) => {
   ]
 }
 
-Be thorough in extracting skills - include programming languages, frameworks, tools, soft skills, certifications, etc.
-If information is not available, use reasonable defaults (empty array for skills, 0 for years, empty string for text).`;
+IMPORTANT:
+- Be thorough in extracting skills - include programming languages, frameworks, tools, soft skills, certifications, etc.
+- Look for keywords and context clues even if the text is partially garbled
+- If information is not clearly available, use reasonable defaults (empty array for skills, 0 for years, empty string for text)
+- Return ONLY valid JSON, no other text`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -55,12 +139,24 @@ If information is not available, use reasonable defaults (empty array for skills
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Parse this resume:\n\n${fileContent}` }
+          { role: 'user', content: `Parse this resume:\n\n${textContent.substring(0, 15000)}` }
         ],
       }),
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
@@ -85,7 +181,8 @@ If information is not available, use reasonable defaults (empty array for skills
         summary: content,
         skills: [],
         experience_years: 0,
-        education: ''
+        education: '',
+        experience: []
       };
     }
 
