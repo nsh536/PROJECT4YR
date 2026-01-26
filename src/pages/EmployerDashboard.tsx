@@ -3,6 +3,7 @@ import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -23,7 +24,9 @@ import {
   TrendingUp,
   Users,
   FileText,
-  Mail
+  Mail,
+  CheckSquare,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -98,6 +101,8 @@ const EmployerDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<string>("all");
+  const [selectedApplications, setSelectedApplications] = useState<Set<string>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -217,6 +222,55 @@ const EmployerDashboard = () => {
     setUpdatingStatus(null);
   };
 
+  const bulkUpdateStatus = async (newStatus: string) => {
+    if (selectedApplications.size === 0) return;
+    
+    setIsBulkUpdating(true);
+    const applicationIds = Array.from(selectedApplications);
+    
+    const { error } = await supabase
+      .from("applications")
+      .update({ status: newStatus })
+      .in("id", applicationIds);
+
+    if (error) {
+      console.error("Error bulk updating status:", error);
+      toast.error("Failed to update applications");
+    } else {
+      // Update local state
+      setJobs(prev => prev.map(job => ({
+        ...job,
+        applications: job.applications.map(app =>
+          selectedApplications.has(app.id) ? { ...app, status: newStatus } : app
+        )
+      })));
+      toast.success(`Updated ${applicationIds.length} application(s) to ${statusConfig[newStatus]?.label || newStatus}`);
+      setSelectedApplications(new Set());
+    }
+    
+    setIsBulkUpdating(false);
+  };
+
+  const toggleApplicationSelection = (applicationId: string) => {
+    setSelectedApplications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(applicationId)) {
+        newSet.delete(applicationId);
+      } else {
+        newSet.add(applicationId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedApplications.size === filteredApplications.length) {
+      setSelectedApplications(new Set());
+    } else {
+      setSelectedApplications(new Set(filteredApplications.map(app => app.id)));
+    }
+  };
+
   const allApplications = jobs.flatMap(job => 
     job.applications.map(app => ({ ...app, jobTitle: job.title, jobCompany: job.company }))
   );
@@ -231,6 +285,8 @@ const EmployerDashboard = () => {
     pending: allApplications.filter(a => a.status === "pending").length,
     interviewing: allApplications.filter(a => a.status === "interview").length
   };
+
+  const isAllSelected = filteredApplications.length > 0 && selectedApplications.size === filteredApplications.length;
 
   if (isLoading) {
     return (
@@ -322,6 +378,34 @@ const EmployerDashboard = () => {
           </Select>
         </div>
 
+        {/* Select All & Bulk Actions */}
+        {filteredApplications.length > 0 && (
+          <div className="flex items-center justify-between mb-4 p-3 bg-secondary/50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={isAllSelected}
+                onCheckedChange={toggleSelectAll}
+                aria-label="Select all applications"
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedApplications.size > 0 
+                  ? `${selectedApplications.size} selected` 
+                  : "Select all"}
+              </span>
+            </div>
+            {selectedApplications.size > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedApplications(new Set())}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Applications List */}
         {filteredApplications.length === 0 ? (
           <Card className="p-12 text-center">
@@ -341,12 +425,23 @@ const EmployerDashboard = () => {
               const StatusIcon = status.icon;
               
               return (
-                <Card key={application.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <Card 
+                  key={application.id} 
+                  className={`overflow-hidden hover:shadow-md transition-shadow ${
+                    selectedApplications.has(application.id) ? "ring-2 ring-primary" : ""
+                  }`}
+                >
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       {/* Candidate Info */}
                       <div className="flex-1">
                         <div className="flex items-start gap-4">
+                          <Checkbox
+                            checked={selectedApplications.has(application.id)}
+                            onCheckedChange={() => toggleApplicationSelection(application.id)}
+                            className="mt-1"
+                            aria-label={`Select ${application.profile?.full_name || "application"}`}
+                          />
                           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                             <span className="text-lg font-semibold text-primary">
                               {application.profile?.full_name?.charAt(0) || "?"}
@@ -462,6 +557,52 @@ const EmployerDashboard = () => {
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {/* Bulk Action Bar */}
+        {selectedApplications.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border shadow-elevated rounded-lg p-4 flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5 text-primary" />
+              <span className="font-medium">{selectedApplications.size} selected</span>
+            </div>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Update to:</span>
+              <Select
+                onValueChange={bulkUpdateStatus}
+                disabled={isBulkUpdating}
+              >
+                <SelectTrigger className="w-[140px]">
+                  {isBulkUpdating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SelectValue placeholder="Select status" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(statusConfig).map(([key, config]) => {
+                    const Icon = config.icon;
+                    return (
+                      <SelectItem key={key} value={key}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4" />
+                          {config.label}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedApplications(new Set())}
+            >
+              Cancel
+            </Button>
           </div>
         )}
       </main>
