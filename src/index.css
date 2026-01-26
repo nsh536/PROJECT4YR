@@ -2,59 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 250 20% 98%;
+    --foreground: 250 25% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 250 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 250 25% 10%;
 
-    --primary: 199 89% 48%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 250 20% 95%;
+    --secondary-foreground: 250 25% 10%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 250 15% 94%;
+    --muted-foreground: 250 10% 45%;
 
-    --accent: 172 66% 50%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 330 85% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 199 89% 48%;
+    --border: 250 15% 90%;
+    --input: 250 15% 90%;
+    --ring: 262 83% 58%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Custom tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(199, 89%, 48%) 0%, hsl(172, 66%, 50%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(210, 40%, 98%) 0%, hsl(199, 89%, 95%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(210, 40%, 99%) 100%);
-    --gradient-dark: linear-gradient(135deg, hsl(222, 47%, 11%) 0%, hsl(215, 28%, 17%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(330, 85%, 60%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(250, 20%, 98%) 0%, hsl(262, 50%, 96%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(250, 30%, 99%) 100%);
+    --gradient-dark: linear-gradient(135deg, hsl(250, 25%, 10%) 0%, hsl(262, 40%, 15%) 100%);
     
-    --shadow-soft: 0 4px 20px -4px hsl(199 89% 48% / 0.15);
-    --shadow-card: 0 4px 30px -8px hsl(222 47% 11% / 0.08);
-    --shadow-elevated: 0 20px 50px -12px hsl(222 47% 11% / 0.15);
-    --shadow-glow: 0 0 40px hsl(199 89% 48% / 0.3);
+    --shadow-soft: 0 4px 20px -4px hsl(262 83% 58% / 0.2);
+    --shadow-card: 0 4px 30px -8px hsl(250 25% 10% / 0.08);
+    --shadow-elevated: 0 20px 50px -12px hsl(250 25% 10% / 0.18);
+    --shadow-glow: 0 0 60px hsl(262 83% 58% / 0.35);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 199 89% 48%;
+    --sidebar-background: 250 20% 98%;
+    --sidebar-foreground: 250 15% 30%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 250 20% 95%;
+    --sidebar-accent-foreground: 250 25% 10%;
+    --sidebar-border: 250 15% 90%;
+    --sidebar-ring: 262 83% 58%;
 
     /* Job type badge colors */
     --job-remote: 142 76% 36%;
@@ -90,46 +90,46 @@
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 250 25% 6%;
+    --foreground: 250 10% 95%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 250 25% 9%;
+    --card-foreground: 250 10% 95%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 250 25% 9%;
+    --popover-foreground: 250 10% 95%;
 
-    --primary: 199 89% 48%;
+    --primary: 262 83% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 250 20% 15%;
+    --secondary-foreground: 250 10% 95%;
 
-    --muted: 215 28% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 250 20% 15%;
+    --muted-foreground: 250 10% 60%;
 
-    --accent: 172 66% 50%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 330 85% 65%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 250 10% 95%;
 
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 199 89% 48%;
+    --border: 250 20% 15%;
+    --input: 250 20% 15%;
+    --ring: 262 83% 65%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(199, 89%, 48%) 0%, hsl(172, 66%, 50%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(222, 47%, 6%) 0%, hsl(222, 47%, 11%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222, 47%, 9%) 0%, hsl(222, 47%, 11%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(262, 83%, 65%) 0%, hsl(330, 85%, 65%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(250, 25%, 6%) 0%, hsl(262, 30%, 12%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(250, 25%, 9%) 0%, hsl(250, 25%, 11%) 100%);
     
-    --sidebar-background: 222 47% 9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 199 89% 48%;
+    --sidebar-background: 250 25% 9%;
+    --sidebar-foreground: 250 10% 95%;
+    --sidebar-primary: 262 83% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 28% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 215 28% 17%;
-    --sidebar-ring: 199 89% 48%;
+    --sidebar-accent: 250 20% 15%;
+    --sidebar-accent-foreground: 250 10% 95%;
+    --sidebar-border: 250 20% 15%;
+    --sidebar-ring: 262 83% 65%;
 
     /* Job type badge colors (dark mode) */
     --job-remote: 142 76% 42%;
