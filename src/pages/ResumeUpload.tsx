@@ -554,7 +554,7 @@ export default function ResumeUpload() {
                           </span>
                           {job.salary_min && job.salary_max && (
                             <span>
-                              ${(job.salary_min / 1000).toFixed(0)}k - ${(job.salary_max / 1000).toFixed(0)}k
+                              ₹{(job.salary_min / 100000).toFixed(1)}L - ₹{(job.salary_max / 100000).toFixed(1)}L
                             </span>
                           )}
                         </div>

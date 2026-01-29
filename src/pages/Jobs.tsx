@@ -12,7 +12,7 @@ import {
   X, 
   MapPin, 
   Briefcase, 
-  DollarSign, 
+  IndianRupee, 
   Clock,
   Loader2,
   Send,
@@ -494,9 +494,10 @@ const fetchAppliedJobs = async () => {
 
   const formatSalary = (min: number | null, max: number | null) => {
     if (!min && !max) return null;
-    if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
-    if (min) return `From $${min.toLocaleString()}`;
-    return `Up to $${max?.toLocaleString()}`;
+    const formatAmount = (amount: number) => `₹${(amount / 100000).toFixed(1)}L`;
+    if (min && max) return `${formatAmount(min)} - ${formatAmount(max)}`;
+    if (min) return `From ${formatAmount(min)}`;
+    return `Up to ${formatAmount(max!)}`;
   };
 
 const getTimeAgo = (date: string) => {
@@ -748,7 +749,7 @@ const getTimeAgo = (date: string) => {
 
             {/* Salary Range Filter */}
             <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/30 rounded-lg">
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
+              <IndianRupee className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">Salary Range:</span>
               <div className="flex-1 max-w-md">
                 <Slider
@@ -899,7 +900,7 @@ const getTimeAgo = (date: string) => {
                         </span>
                         {formatSalary(job.salary_min, job.salary_max) && (
                           <span className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4" />
+                            <IndianRupee className="h-4 w-4" />
                             {formatSalary(job.salary_min, job.salary_max)}
                           </span>
                         )}
