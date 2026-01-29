@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, DragEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +53,7 @@ export default function ResumeUpload() {
   const [loadingResume, setLoadingResume] = useState(true);
   const [matchedJobs, setMatchedJobs] = useState<MatchedJob[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -111,9 +112,8 @@ export default function ResumeUpload() {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
+  const processFile = useCallback(async (file: File) => {
+    if (!user) return;
 
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
     if (!allowedTypes.includes(file.type)) {
@@ -128,7 +128,6 @@ export default function ResumeUpload() {
 
     setUploading(true);
     try {
-      // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
@@ -142,7 +141,6 @@ export default function ResumeUpload() {
         .from('resumes')
         .getPublicUrl(filePath);
 
-      // Create resume record
       const { data: resumeData, error: insertError } = await supabase
         .from('resumes')
         .insert({
@@ -160,7 +158,6 @@ export default function ResumeUpload() {
       setUploading(false);
       setParsing(true);
 
-      // Read file content for parsing (works best for text files)
       let fileContent = '';
       try {
         fileContent = await file.text();
@@ -168,7 +165,6 @@ export default function ResumeUpload() {
         console.log('Could not read file as text, will use URL parsing');
       }
 
-      // Call parse-resume function with both content and URL for better parsing
       const { error: parseError } = await supabase.functions.invoke('parse-resume', {
         body: {
           resumeId: resumeData.id,
@@ -189,7 +185,47 @@ export default function ResumeUpload() {
       setUploading(false);
       setParsing(false);
     }
+  }, [user]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
   };
+
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await processFile(files[0]);
+    }
+  }, [processFile]);
 
   if (authLoading || loadingResume) {
     return (
@@ -215,8 +251,18 @@ export default function ResumeUpload() {
             </p>
           </div>
 
-          {/* Upload Section */}
-          <Card className="border-dashed border-2">
+          {/* Upload Section with Drag & Drop */}
+          <Card 
+            className={`border-dashed border-2 transition-all duration-300 ${
+              isDragging 
+                ? 'border-primary bg-primary/5 scale-[1.02] shadow-glow' 
+                : 'border-border hover:border-primary/50'
+            }`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             <CardContent className="py-12">
               <label className="flex flex-col items-center justify-center cursor-pointer">
                 <input
@@ -233,17 +279,31 @@ export default function ResumeUpload() {
                       {uploading ? 'Uploading...' : 'AI is parsing your resume...'}
                     </p>
                   </div>
+                ) : isDragging ? (
+                  <div className="flex flex-col items-center gap-4 animate-fade-in">
+                    <div className="p-6 rounded-full gradient-bg shadow-glow animate-pulse">
+                      <CloudUpload className="h-10 w-10 text-primary-foreground" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-primary font-semibold text-lg">
+                        Drop your resume here!
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Release to upload
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4">
-                    <div className="p-4 rounded-full bg-primary/10">
+                    <div className="p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
                       <Upload className="h-8 w-8 text-primary" />
                     </div>
                     <div className="text-center">
                       <p className="text-foreground font-medium">
-                        {resume ? 'Upload a new resume' : 'Click to upload your resume'}
+                        {resume ? 'Upload a new resume' : 'Drag & drop your resume here'}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        PDF, DOC, DOCX, or TXT (max 5MB)
+                        or click to browse • PDF, DOC, DOCX, TXT (max 5MB)
                       </p>
                     </div>
                     <Button variant="outline">Select File</Button>
