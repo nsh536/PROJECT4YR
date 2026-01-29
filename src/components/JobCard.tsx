@@ -1,7 +1,7 @@
 import { Job } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign, Briefcase } from "lucide-react";
+import { MapPin, Clock, IndianRupee, Briefcase } from "lucide-react";
 
 interface JobCardProps {
   job: Job;
@@ -41,7 +41,7 @@ export function JobCard({ job, onApply }: JobCardProps) {
               {job.location}
             </span>
             <span className="flex items-center gap-1.5">
-              <DollarSign className="h-4 w-4" />
+              <IndianRupee className="h-4 w-4" />
               {job.salary}
             </span>
             <span className="flex items-center gap-1.5">
