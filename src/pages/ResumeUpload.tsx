@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, DragEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload, X, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +54,7 @@ export default function ResumeUpload() {
   const [matchedJobs, setMatchedJobs] = useState<MatchedJob[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -112,19 +113,24 @@ export default function ResumeUpload() {
     }
   };
 
-  const processFile = useCallback(async (file: File) => {
-    if (!user) return;
-
+  const validateFile = (file: File): boolean => {
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
     if (!allowedTypes.includes(file.type)) {
       toast.error('Please upload a PDF, DOC, DOCX, or TXT file');
-      return;
+      return false;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const processFile = useCallback(async (file: File) => {
+    if (!user) return;
+
+    if (!validateFile(file)) return;
 
     setUploading(true);
     try {
@@ -187,10 +193,42 @@ export default function ResumeUpload() {
     }
   }, [user]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (file: File) => {
+    if (validateFile(file)) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    await processFile(file);
+    handleFileSelect(file);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!selectedFile) return;
+    await processFile(selectedFile);
+    setSelectedFile(null);
+  };
+
+  const handleCancelUpload = () => {
+    setSelectedFile(null);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  const getFileTypeLabel = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      'application/pdf': 'PDF Document',
+      'application/msword': 'Word Document',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word Document',
+      'text/plain': 'Text File'
+    };
+    return typeMap[type] || 'Document';
   };
 
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -216,16 +254,16 @@ export default function ResumeUpload() {
     e.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      await processFile(files[0]);
+      handleFileSelect(files[0]);
     }
-  }, [processFile]);
+  }, []);
 
   if (authLoading || loadingResume) {
     return (
@@ -264,52 +302,94 @@ export default function ResumeUpload() {
             onDrop={handleDrop}
           >
             <CardContent className="py-12">
-              <label className="flex flex-col items-center justify-center cursor-pointer">
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={uploading || parsing}
-                />
-                {uploading || parsing ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    <p className="text-muted-foreground">
-                      {uploading ? 'Uploading...' : 'AI is parsing your resume...'}
+              {uploading || parsing ? (
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <p className="text-muted-foreground">
+                    {uploading ? 'Uploading...' : 'AI is parsing your resume...'}
+                  </p>
+                </div>
+              ) : selectedFile ? (
+                // File Preview State
+                <div className="flex flex-col items-center gap-6 animate-fade-in">
+                  <div className="p-6 rounded-2xl bg-primary/10 border-2 border-primary/20">
+                    <File className="h-12 w-12 text-primary" />
+                  </div>
+                  
+                  <div className="text-center space-y-2">
+                    <p className="text-foreground font-semibold text-lg">
+                      {selectedFile.name}
                     </p>
-                  </div>
-                ) : isDragging ? (
-                  <div className="flex flex-col items-center gap-4 animate-fade-in">
-                    <div className="p-6 rounded-full gradient-bg shadow-glow animate-pulse">
-                      <CloudUpload className="h-10 w-10 text-primary-foreground" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-primary font-semibold text-lg">
-                        Drop your resume here!
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Release to upload
-                      </p>
+                    <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                      <Badge variant="secondary">{getFileTypeLabel(selectedFile.type)}</Badge>
+                      <span>•</span>
+                      <span>{formatFileSize(selectedFile.size)}</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                      <Upload className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-foreground font-medium">
-                        {resume ? 'Upload a new resume' : 'Drag & drop your resume here'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        or click to browse • PDF, DOC, DOCX, TXT (max 5MB)
-                      </p>
-                    </div>
-                    <Button variant="outline">Select File</Button>
+
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleCancelUpload}
+                      className="gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="gradient" 
+                      onClick={handleConfirmUpload}
+                      className="gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload & Parse
+                    </Button>
                   </div>
-                )}
-              </label>
+
+                  <p className="text-xs text-muted-foreground">
+                    Click "Upload & Parse" to start AI-powered resume analysis
+                  </p>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  {isDragging ? (
+                    <div className="flex flex-col items-center gap-4 animate-fade-in">
+                      <div className="p-6 rounded-full gradient-bg shadow-glow animate-pulse">
+                        <CloudUpload className="h-10 w-10 text-primary-foreground" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-primary font-semibold text-lg">
+                          Drop your resume here!
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Release to preview
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                        <Upload className="h-8 w-8 text-primary" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-foreground font-medium">
+                          {resume ? 'Upload a new resume' : 'Drag & drop your resume here'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          or click to browse • PDF, DOC, DOCX, TXT (max 5MB)
+                        </p>
+                      </div>
+                      <Button variant="outline">Select File</Button>
+                    </div>
+                  )}
+                </label>
+              )}
             </CardContent>
           </Card>
 
