@@ -2,6 +2,28 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Briefcase } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const INDIAN_CITIES = [
+  { value: "", label: "All Locations" },
+  { value: "bangalore", label: "Bangalore" },
+  { value: "mumbai", label: "Mumbai" },
+  { value: "delhi", label: "Delhi NCR" },
+  { value: "hyderabad", label: "Hyderabad" },
+  { value: "chennai", label: "Chennai" },
+  { value: "pune", label: "Pune" },
+  { value: "kolkata", label: "Kolkata" },
+  { value: "ahmedabad", label: "Ahmedabad" },
+  { value: "noida", label: "Noida" },
+  { value: "gurgaon", label: "Gurgaon" },
+  { value: "remote", label: "Remote" },
+];
 
 interface JobSearchFormProps {
   onSearch?: (query: string, location: string, type: string) => void;
@@ -52,13 +74,19 @@ export function JobSearchForm({ onSearch, variant = "hero" }: JobSearchFormProps
 
           {/* Location */}
           <div className="relative flex-1">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="City, state, or remote"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="pl-12 h-14 border-0 bg-secondary/50 rounded-xl text-base"
-            />
+            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10 pointer-events-none" />
+            <Select value={location} onValueChange={setLocation}>
+              <SelectTrigger className="pl-12 h-14 border-0 bg-secondary/50 rounded-xl text-base [&>span]:text-left">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover">
+                {INDIAN_CITIES.map((city) => (
+                  <SelectItem key={city.value} value={city.value || "all"}>
+                    {city.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Job Type */}
