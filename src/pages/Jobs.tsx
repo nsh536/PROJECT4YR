@@ -563,28 +563,58 @@ const getTimeAgo = (date: string) => {
         </div>
       </section>
 
-      {/* Suggested Jobs Section - Show when no filters are applied */}
+      {/* AI-Powered Suggested Jobs Section */}
       {!searchQuery && !locationSearch && selectedType === "All" && selectedExperience === "All" && salaryRange[0] === 0 && salaryRange[1] === MAX_SALARY && viewMode === "all" && jobs.length > 0 && (
         <section className="py-8 px-4 bg-gradient-to-b from-primary/5 to-transparent border-b">
           <div className="container mx-auto max-w-6xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Sparkles className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${userResume && aiPowered ? 'bg-gradient-to-br from-primary/30 to-purple-500/30' : 'bg-primary/20'}`}>
+                  {userResume && aiPowered ? <Brain className="h-5 w-5 text-primary" /> : <Sparkles className="h-5 w-5 text-primary" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-xl font-semibold">
+                      {userResume ? 'Top Matches for You' : 'Suggested Jobs'}
+                    </h2>
+                    {userResume && aiPowered && (
+                      <Badge variant="secondary" className="text-xs bg-gradient-to-r from-primary/20 to-purple-500/20">
+                        <Brain className="h-3 w-3 mr-1" />
+                        AI Powered
+                      </Badge>
+                    )}
+                    {isLoadingAI && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {userResume 
+                      ? aiPowered 
+                        ? 'Matched based on your skills, experience & career goals'
+                        : `Based on ${userResume.skills?.length || 0} skills from your resume`
+                      : 'Popular jobs you might be interested in'
+                    }
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-display text-xl font-semibold">Suggested for You</h2>
-                <p className="text-sm text-muted-foreground">Popular jobs you might be interested in</p>
-              </div>
+              {!userResume && user && (
+                <Button variant="outline" size="sm" onClick={() => window.location.href = '/resume'}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Upload Resume for Personalized Matches
+                </Button>
+              )}
             </div>
             
             <div className="grid md:grid-cols-3 gap-4">
-              {jobs.slice(0, 3).map((job) => {
+              {(userResume 
+                ? jobs.filter(j => (j.matchScore || 0) > 0).slice(0, 3) 
+                : jobs.slice(0, 3)
+              ).map((job, index) => {
                 const expLevel = getExperienceLevel(job.experience_min);
                 const expConfig = experienceLevelConfig[expLevel];
                 const typeConfig = jobTypeConfig[job.job_type];
                 const TypeIcon = typeConfig?.icon;
                 const isSaved = savedJobs.includes(job.id);
                 const isApplied = appliedJobs.includes(job.id);
+                const hasAIData = userResume && (job.matchScore !== undefined);
                 
                 return (
                   <Card 
@@ -592,10 +622,27 @@ const getTimeAgo = (date: string) => {
                     className="group relative overflow-hidden border-primary/20 hover:border-primary/40 hover:shadow-lg transition-all duration-300 cursor-pointer"
                     onClick={() => !isApplied && setApplyingTo(job)}
                   >
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50" />
+                    {/* Match score indicator for AI matches */}
+                    {hasAIData && (
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-primary/50" />
+                    )}
+                    {!hasAIData && (
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50" />
+                    )}
+                    
+                    {/* Ranking badge for top matches */}
+                    {hasAIData && index < 3 && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge className="bg-gradient-to-r from-primary to-purple-500 text-primary-foreground border-0 shadow-md">
+                          <Star className="h-3 w-3 mr-1 fill-current" />
+                          #{index + 1} Match
+                        </Badge>
+                      </div>
+                    )}
+                    
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
+                        <div className="flex-1 pr-16">
                           <h3 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-1">
                             {job.title}
                           </h3>
@@ -604,7 +651,7 @@ const getTimeAgo = (date: string) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 -mt-1 -mr-2"
+                          className="h-8 w-8 -mt-1 absolute top-12 right-3"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleSaveJob(job.id);
@@ -617,6 +664,42 @@ const getTimeAgo = (date: string) => {
                           )}
                         </Button>
                       </div>
+                      
+                      {/* AI Match Score with breakdown */}
+                      {hasAIData && job.matchScore !== undefined && (
+                        <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/10">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-muted-foreground">Match Score</span>
+                            <span className="text-lg font-bold text-primary">{job.matchScore}%</span>
+                          </div>
+                          <Progress value={job.matchScore} className="h-2 mb-2" />
+                          
+                          {/* Skill match details */}
+                          {job.matchingSkills && job.matchingSkills.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {job.matchingSkills.slice(0, 3).map((skill, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
+                                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {job.matchingSkills.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{job.matchingSkills.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* AI recommendation */}
+                          {job.recommendation && (
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2 italic">
+                              <Lightbulb className="h-3 w-3 inline mr-1 text-yellow-500" />
+                              {job.recommendation}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       
                       <div className="flex flex-wrap gap-2 mb-3">
                         <Badge variant="secondary" className="text-xs">
@@ -648,6 +731,14 @@ const getTimeAgo = (date: string) => {
                 );
               })}
             </div>
+            
+            {/* Empty state for no matches */}
+            {userResume && jobs.filter(j => (j.matchScore || 0) > 0).length === 0 && !isLoadingAI && (
+              <div className="text-center py-8">
+                <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">Analyzing your resume to find the best matches...</p>
+              </div>
+            )}
           </div>
         </section>
       )}
