@@ -563,6 +563,95 @@ const getTimeAgo = (date: string) => {
         </div>
       </section>
 
+      {/* Suggested Jobs Section - Show when no filters are applied */}
+      {!searchQuery && !locationSearch && selectedType === "All" && selectedExperience === "All" && salaryRange[0] === 0 && salaryRange[1] === MAX_SALARY && viewMode === "all" && jobs.length > 0 && (
+        <section className="py-8 px-4 bg-gradient-to-b from-primary/5 to-transparent border-b">
+          <div className="container mx-auto max-w-6xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-primary/20">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-semibold">Suggested for You</h2>
+                <p className="text-sm text-muted-foreground">Popular jobs you might be interested in</p>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-4">
+              {jobs.slice(0, 3).map((job) => {
+                const expLevel = getExperienceLevel(job.experience_min);
+                const expConfig = experienceLevelConfig[expLevel];
+                const typeConfig = jobTypeConfig[job.job_type];
+                const TypeIcon = typeConfig?.icon;
+                const isSaved = savedJobs.includes(job.id);
+                const isApplied = appliedJobs.includes(job.id);
+                
+                return (
+                  <Card 
+                    key={`suggested-${job.id}`}
+                    className="group relative overflow-hidden border-primary/20 hover:border-primary/40 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                    onClick={() => !isApplied && setApplyingTo(job)}
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50" />
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-1">
+                            {job.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">{job.company}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 -mt-1 -mr-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSaveJob(job.id);
+                          }}
+                        >
+                          {isSaved ? (
+                            <BookmarkCheck className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Bookmark className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Badge variant="secondary" className="text-xs">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {job.location}
+                        </Badge>
+                        {typeConfig && (
+                          <Badge className={`text-xs ${typeConfig.className}`}>
+                            {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
+                            {job.job_type}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {formatSalary(job.salary_min, job.salary_max) && (
+                        <p className="text-sm font-medium text-primary">
+                          {formatSalary(job.salary_min, job.salary_max)}
+                        </p>
+                      )}
+                      
+                      {isApplied && (
+                        <Badge className="mt-3 bg-green-500/20 text-green-600 border-green-500/30">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Applied
+                        </Badge>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Personalized Recommendations Banner */}
       {userResume && profile?.role === 'student' && (
         <section className="py-6 px-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b">
