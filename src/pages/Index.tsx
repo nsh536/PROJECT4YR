@@ -130,7 +130,13 @@ const Index = () => {
 
           {/* Search Form */}
           <div className="animate-fade-up" style={{ animationDelay: "0.2s" }}>
-            <JobSearchForm onSearch={(q, l, t) => console.log(q, l, t)} />
+            <JobSearchForm onSearch={(q, l, t) => {
+              const params = new URLSearchParams();
+              if (q) params.set("q", q);
+              if (l && l !== "all") params.set("location", l);
+              if (t) params.set("type", t);
+              navigate(`/jobs?${params.toString()}`);
+            }} />
           </div>
 
           {/* Quick Stats */}

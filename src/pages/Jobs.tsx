@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { JobSearchForm } from "@/components/JobSearchForm";
 import { Badge } from "@/components/ui/badge";
@@ -151,10 +152,11 @@ const MAX_SALARY = 300000;
 
 const Jobs = () => {
   const { user, profile } = useAuth();
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedType, setSelectedType] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedType, setSelectedType] = useState(searchParams.get("type") || "All");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [applyingTo, setApplyingTo] = useState<Job | null>(null);
   const [userResume, setUserResume] = useState<Resume | null>(null);
   const [isApplying, setIsApplying] = useState(false);
@@ -164,9 +166,9 @@ const Jobs = () => {
   const [aiPowered, setAiPowered] = useState(false);
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, MAX_SALARY]);
   const [selectedExperience, setSelectedExperience] = useState("All");
-const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [savingJob, setSavingJob] = useState<string | null>(null);
-  const [locationSearch, setLocationSearch] = useState("");
+  const [locationSearch, setLocationSearch] = useState(searchParams.get("location") || "");
   const [viewMode, setViewMode] = useState<"all" | "saved" | "applied">("all");
   const [applicationStatuses, setApplicationStatuses] = useState<Record<string, string>>({});
 
