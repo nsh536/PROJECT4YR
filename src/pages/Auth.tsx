@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +17,6 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { user, loading, signIn, signUp, resetPassword, updatePassword } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,13 +29,22 @@ export default function Auth() {
   const [view, setView] = useState<'auth' | 'forgot' | 'reset-success'>('auth');
   const [isResetMode, setIsResetMode] = useState(false);
 
-  // Check if user arrived via password reset link
+  // Listen for PASSWORD_RECOVERY event when user clicks reset link from email
   useEffect(() => {
-    const mode = searchParams.get('mode');
-    if (mode === 'reset') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetMode(true);
+      }
+    });
+
+    // Also check URL hash for recovery tokens (Supabase puts tokens in URL fragment)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    if (hashParams.get('type') === 'recovery') {
       setIsResetMode(true);
     }
-  }, [searchParams]);
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Don't redirect if in reset mode - user needs to set new password
