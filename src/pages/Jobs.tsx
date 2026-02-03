@@ -670,7 +670,105 @@ const getTimeAgo = (date: string) => {
                         <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/10">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium text-muted-foreground">Match Score</span>
-                            <span className="text-lg font-bold text-primary">{job.matchScore}%</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold text-primary">{job.matchScore}%</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Brain className="h-3 w-3 mr-1" />
+                                      Why this match?
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="w-80 p-4">
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-2 border-b pb-2">
+                                        <Brain className="h-4 w-4 text-primary" />
+                                        <span className="font-semibold text-sm">AI Match Breakdown</span>
+                                      </div>
+                                      
+                                      {/* Skills Match */}
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="flex items-center gap-1">
+                                            <Target className="h-3 w-3 text-blue-500" />
+                                            Skills Alignment
+                                          </span>
+                                          <span className="font-medium">{job.skillMatch || job.matchScore}%</span>
+                                        </div>
+                                        <Progress value={job.skillMatch || job.matchScore} className="h-1.5" />
+                                        <p className="text-xs text-muted-foreground">
+                                          {job.matchingSkills?.length || 0} of your skills match this role's requirements
+                                        </p>
+                                      </div>
+                                      
+                                      {/* Experience Match */}
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="flex items-center gap-1">
+                                            <Briefcase className="h-3 w-3 text-green-500" />
+                                            Experience Level
+                                          </span>
+                                          <span className="font-medium">{job.experienceMatch || 50}%</span>
+                                        </div>
+                                        <Progress value={job.experienceMatch || 50} className="h-1.5" />
+                                        <p className="text-xs text-muted-foreground">
+                                          Your experience level fits this position's requirements
+                                        </p>
+                                      </div>
+                                      
+                                      {/* Education Match */}
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="flex items-center gap-1">
+                                            <GraduationCap className="h-3 w-3 text-purple-500" />
+                                            Education Fit
+                                          </span>
+                                          <span className="font-medium">{job.educationMatch || 50}%</span>
+                                        </div>
+                                        <Progress value={job.educationMatch || 50} className="h-1.5" />
+                                        <p className="text-xs text-muted-foreground">
+                                          Your educational background aligns with role expectations
+                                        </p>
+                                      </div>
+                                      
+                                      {/* Career Trajectory */}
+                                      <div className="space-y-1">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="flex items-center gap-1">
+                                            <TrendingUp className="h-3 w-3 text-orange-500" />
+                                            Career Trajectory
+                                          </span>
+                                          <span className="font-medium">{job.careerTrajectory || 50}%</span>
+                                        </div>
+                                        <Progress value={job.careerTrajectory || 50} className="h-1.5" />
+                                        <p className="text-xs text-muted-foreground">
+                                          How well this role fits your career path and goals
+                                        </p>
+                                      </div>
+                                      
+                                      {/* Growth Potential */}
+                                      {job.growthPotential && (
+                                        <div className="pt-2 border-t">
+                                          <div className="flex items-start gap-2">
+                                            <Lightbulb className="h-3 w-3 text-yellow-500 mt-0.5 shrink-0" />
+                                            <p className="text-xs text-muted-foreground">
+                                              <span className="font-medium text-foreground">Growth potential: </span>
+                                              {job.growthPotential}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                           </div>
                           <Progress value={job.matchScore} className="h-2 mb-2" />
                           
