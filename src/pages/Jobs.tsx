@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { JobSearchForm } from "@/components/JobSearchForm";
+import { HelpButton } from "@/components/HelpButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1462,6 +1463,7 @@ const getTimeAgo = (date: string) => {
           </div>
         </DialogContent>
       </Dialog>
+      <HelpButton />
     </div>
   );
 };

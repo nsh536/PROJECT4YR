@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
+import { HelpButton } from '@/components/HelpButton';
 
 interface ParsedResume {
   id: string;
@@ -621,6 +622,7 @@ export default function ResumeUpload() {
           )}
         </div>
       </main>
+      <HelpButton />
     </div>
   );
 }
