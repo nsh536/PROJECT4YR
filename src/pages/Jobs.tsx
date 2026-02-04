@@ -406,6 +406,13 @@ const fetchAppliedJobs = async () => {
         userResume.skills || []
       );
 
+      // Get employer ID for the job
+      const { data: jobData } = await supabase
+        .from("jobs")
+        .select("employer_id")
+        .eq("id", applyingTo.id)
+        .single();
+
       // Create application
       const { error: appError } = await supabase
         .from("applications")
@@ -418,6 +425,24 @@ const fetchAppliedJobs = async () => {
         });
 
       if (appError) throw appError;
+
+      // Create a message record for this application
+      if (jobData?.employer_id) {
+        const applicantName = profile?.full_name || user.email?.split('@')[0] || 'Applicant';
+        const { error: messageError } = await supabase
+          .from("messages")
+          .insert({
+            sender_id: user.id,
+            recipient_id: jobData.employer_id,
+            job_id: applyingTo.id,
+            subject: `Application for ${applyingTo.title}`,
+            content: `Hi,\n\nI have applied for the ${applyingTo.title} position at ${applyingTo.company}.\n\nMy match score is ${matchScore}% based on my skills and experience.\n\nResume: ${userResume.title || 'My Resume'}\n\nI look forward to hearing from you.\n\nBest regards,\n${applicantName}`
+          });
+
+        if (messageError) {
+          console.error("Message creation error:", messageError);
+        }
+      }
 
       // Send notification to employer
       const { error: notifyError } = await supabase.functions.invoke("notify-employer", {
