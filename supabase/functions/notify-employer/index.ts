@@ -32,7 +32,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { jobId, applicantName, applicantEmail, resumeTitle, matchScore }: NotifyEmployerRequest = await req.json();
     
-    console.log("Notification request:", { jobId, applicantName, applicantEmail, resumeTitle, matchScore });
+    console.log("========== NOTIFY EMPLOYER EMAIL DEBUG ==========");
+    console.log("Job ID:", jobId);
+    console.log("Applicant Name:", applicantName);
+    console.log("Applicant Email:", applicantEmail);
+    console.log("Resume Title:", resumeTitle || "N/A");
+    console.log("Match Score:", matchScore || "N/A");
+    console.log("=================================================");
 
     // Get job details including employer info
     const { data: job, error: jobError } = await supabase
@@ -60,7 +66,12 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Employer profile not found");
     }
 
-    console.log("Employer profile found:", employerProfile.email);
+    console.log("Employer Email:", employerProfile.email);
+    console.log("Employer Name:", employerProfile.full_name || "N/A");
+    console.log("Job Title:", job.title);
+    console.log("Company:", job.company);
+    console.log("Subject:", `New Application for ${job.title} at ${job.company}`);
+    console.log("=================================================");
 
     // Send notification email
     const emailResponse = await resend.emails.send({

@@ -25,7 +25,12 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { recipientId, senderName, subject, preview }: NotifyMessageRequest = await req.json();
 
-    console.log('Notifying user about new message:', { recipientId, senderName, subject });
+    console.log("========== NOTIFY MESSAGE EMAIL DEBUG ==========");
+    console.log("Recipient ID:", recipientId);
+    console.log("Sender Name:", senderName);
+    console.log("Subject:", subject);
+    console.log("Preview:", preview);
+    console.log("================================================");
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -46,7 +51,10 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log('Sending email notification to:', profile.email);
+    console.log("Recipient Email:", profile.email);
+    console.log("Recipient Name:", profile.full_name || "N/A");
+    console.log("Email Subject:", `New message from ${senderName}: ${subject}`);
+    console.log("================================================");
 
     const emailResponse = await resend.emails.send({
       from: "CareerCompass <onboarding@resend.dev>",

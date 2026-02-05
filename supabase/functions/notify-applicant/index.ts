@@ -27,7 +27,14 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { applicantName, applicantEmail, jobTitle, company, matchScore }: NotifyApplicantRequest = await req.json();
     
-    console.log("Sending confirmation to:", { applicantName, applicantEmail, jobTitle, company, matchScore });
+    console.log("========== NOTIFY APPLICANT EMAIL DEBUG ==========");
+    console.log("Recipient:", applicantEmail);
+    console.log("Applicant Name:", applicantName);
+    console.log("Job Title:", jobTitle);
+    console.log("Company:", company);
+    console.log("Match Score:", matchScore || "N/A");
+    console.log("Subject:", `Application Confirmed: ${jobTitle} at ${company}`);
+    console.log("==================================================");
 
     // Send confirmation email to applicant
     const emailResponse = await resend.emails.send({
