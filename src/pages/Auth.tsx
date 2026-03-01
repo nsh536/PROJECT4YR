@@ -27,7 +27,11 @@ export default function Auth() {
   const [companyName, setCompanyName] = useState('');
   const [role, setRole] = useState<'student' | 'employer'>('student');
   const [view, setView] = useState<'auth' | 'forgot' | 'reset-success'>('auth');
-  const [isResetMode, setIsResetMode] = useState(false);
+  
+  // Initialize isResetMode synchronously from URL hash to prevent redirect race condition
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const initialResetMode = hashParams.get('type') === 'recovery';
+  const [isResetMode, setIsResetMode] = useState(initialResetMode);
 
   // Listen for PASSWORD_RECOVERY event when user clicks reset link from email
   useEffect(() => {
@@ -36,12 +40,6 @@ export default function Auth() {
         setIsResetMode(true);
       }
     });
-
-    // Also check URL hash for recovery tokens (Supabase puts tokens in URL fragment)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    if (hashParams.get('type') === 'recovery') {
-      setIsResetMode(true);
-    }
 
     return () => subscription.unsubscribe();
   }, []);
