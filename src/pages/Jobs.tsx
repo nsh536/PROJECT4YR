@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { SkillsGapAnalyzer } from "@/components/SkillsGapAnalyzer";
+import { InterviewPrep } from "@/components/InterviewPrep";
 import { Header } from "@/components/Header";
 import { JobSearchForm } from "@/components/JobSearchForm";
 import { HelpButton } from "@/components/HelpButton";
@@ -172,6 +174,8 @@ const Jobs = () => {
   const [locationSearch, setLocationSearch] = useState(searchParams.get("location") || "");
   const [viewMode, setViewMode] = useState<"all" | "saved" | "applied">("all");
   const [applicationStatuses, setApplicationStatuses] = useState<Record<string, string>>({});
+  const [skillsGapJob, setSkillsGapJob] = useState<Job | null>(null);
+  const [interviewPrepJob, setInterviewPrepJob] = useState<Job | null>(null);
 
   // Extract unique locations from jobs
   const uniqueLocations = [...new Set(jobs.map(job => job.location))].filter(Boolean).sort();
@@ -1384,6 +1388,38 @@ const getTimeAgo = (date: string) => {
                             {!user ? "Sign in to Apply" : profile?.role === 'employer' ? "Employers can't apply" : "Apply Now"}
                           </Button>
                         )}
+                        {user && profile?.role === 'student' && (
+                          <>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setSkillsGapJob(job)}
+                                  >
+                                    <Target className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Skills Gap Analysis</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setInterviewPrepJob(job)}
+                                  >
+                                    <GraduationCap className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Interview Prep</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </>
+                        )}
                         <Button 
                           variant="outline" 
                           size="icon"
@@ -1463,6 +1499,26 @@ const getTimeAgo = (date: string) => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Skills Gap Analyzer Dialog */}
+      {skillsGapJob && (
+        <SkillsGapAnalyzer
+          open={!!skillsGapJob}
+          onOpenChange={(open) => !open && setSkillsGapJob(null)}
+          job={skillsGapJob}
+          resume={userResume}
+        />
+      )}
+
+      {/* Interview Prep Dialog */}
+      {interviewPrepJob && (
+        <InterviewPrep
+          open={!!interviewPrepJob}
+          onOpenChange={(open) => !open && setInterviewPrepJob(null)}
+          job={interviewPrepJob}
+          resume={userResume}
+        />
+      )}
+
       <HelpButton />
     </div>
   );
