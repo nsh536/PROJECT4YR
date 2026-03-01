@@ -26,12 +26,16 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [role, setRole] = useState<'student' | 'employer'>('student');
-  const [view, setView] = useState<'auth' | 'forgot' | 'reset-success'>('auth');
+  const [view, setView] = useState<'auth' | 'forgot' | 'reset-success' | 'change-password'>('auth');
   
   // Initialize isResetMode synchronously from URL hash to prevent redirect race condition
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   const initialResetMode = hashParams.get('type') === 'recovery';
   const [isResetMode, setIsResetMode] = useState(initialResetMode);
+
+  // Check if user navigated here to change password via query param
+  const searchParams = new URLSearchParams(window.location.search);
+  const isChangePassword = searchParams.get('action') === 'change-password';
 
   // Listen for PASSWORD_RECOVERY event when user clicks reset link from email
   useEffect(() => {
@@ -45,11 +49,15 @@ export default function Auth() {
   }, []);
 
   useEffect(() => {
-    // Don't redirect if in reset mode - user needs to set new password
-    if (!loading && user && !isResetMode) {
+    if (isChangePassword && user && !loading) {
+      setView('change-password');
+      return;
+    }
+    // Don't redirect if in reset mode or change-password mode
+    if (!loading && user && !isResetMode && view !== 'change-password') {
       navigate('/');
     }
-  }, [user, loading, navigate, isResetMode]);
+  }, [user, loading, navigate, isResetMode, isChangePassword, view]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,6 +237,76 @@ export default function Auth() {
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Update Password
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Change Password View - for logged-in users
+  if (view === 'change-password' && user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+        <Card className="w-full max-w-md border-border/50 shadow-xl">
+          <CardHeader className="text-center pb-2">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 rounded-2xl gradient-bg shadow-glow">
+                <KeyRound className="h-8 w-8 text-primary-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-display">
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Enter a new password for your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="change-new-password">New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="change-new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="change-confirm-password">Confirm New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="change-confirm-password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-10"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Update Password
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
               </Button>
             </form>
           </CardContent>
