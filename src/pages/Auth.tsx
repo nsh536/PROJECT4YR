@@ -78,6 +78,8 @@ export default function Auth() {
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         toast.error('Invalid email or password');
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        toast.error('Network error. Please check your internet connection and try again.');
       } else {
         toast.error(error.message);
       }
