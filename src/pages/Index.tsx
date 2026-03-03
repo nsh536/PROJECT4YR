@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { JobSearchForm } from "@/components/JobSearchForm";
 import { JobCard } from "@/components/JobCard";
 import { HelpButton } from "@/components/HelpButton";
+import { WelcomeDialog } from "@/components/WelcomeDialog";
 import { Button } from "@/components/ui/button";
 import { jobs, Job } from "@/data/mockData";
 import { Link, useNavigate } from "react-router-dom";
@@ -299,6 +300,7 @@ const Index = () => {
       </Dialog>
 
       <HelpButton />
+      <WelcomeDialog />
     </div>
   );
 };
