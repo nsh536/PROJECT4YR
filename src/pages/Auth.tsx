@@ -25,7 +25,13 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [role, setRole] = useState<'student' | 'employer'>('student');
+  
+  // Read query params for pre-selecting tab and role (from WelcomeDialog)
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  const defaultTab = urlSearchParams.get('defaultTab') === 'signup' ? 'signup' : 'signin';
+  const defaultRole = urlSearchParams.get('role') === 'employer' ? 'employer' : 'student';
+  
+  const [role, setRole] = useState<'student' | 'employer'>(defaultRole);
   const [view, setView] = useState<'auth' | 'forgot' | 'reset-success' | 'change-password'>('auth');
   
   // Initialize isResetMode synchronously from URL hash to prevent redirect race condition
@@ -425,7 +431,7 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
