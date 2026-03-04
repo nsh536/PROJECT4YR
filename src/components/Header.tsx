@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { openWelcomeDialog } from "@/components/WelcomeDialog";
 import { Compass, Menu, X, LogOut, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -140,8 +141,8 @@ export function Header() {
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/auth">Sign In</Link>
                 </Button>
-                <Button variant="default" size="sm" asChild>
-                  <Link to="/auth">Get Started</Link>
+                <Button variant="default" size="sm" onClick={openWelcomeDialog}>
+                  Get Started
                 </Button>
               </>
             )}
@@ -193,8 +194,8 @@ export function Header() {
                     <Button variant="outline" size="sm" className="flex-1" asChild>
                       <Link to="/auth">Sign In</Link>
                     </Button>
-                    <Button variant="default" size="sm" className="flex-1" asChild>
-                      <Link to="/auth">Get Started</Link>
+                    <Button variant="default" size="sm" className="flex-1" onClick={openWelcomeDialog}>
+                      Get Started
                     </Button>
                   </>
                 )}
