@@ -229,9 +229,10 @@ serve(async (req) => {
         match_score: matchScore,
         matching_skills: matchingSkills
       };
-    }).sort((a, b) => b.match_score - a.match_score) || [];
+    }).filter(c => c.match_score > 0)
+      .sort((a, b) => b.match_score - a.match_score) || [];
 
-    // If fewer than 10 results, supplement with demo candidates
+    // Always supplement with demo candidates to ensure at least 10 results
     const MIN_RESULTS = 10;
     let finalCandidates = [...matchedCandidates];
 
