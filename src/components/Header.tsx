@@ -141,8 +141,8 @@ export function Header() {
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/auth">Sign In</Link>
                 </Button>
-                <Button variant="default" size="sm" asChild>
-                  <Link to="/auth">Get Started</Link>
+                <Button variant="default" size="sm" onClick={openWelcomeDialog}>
+                  Get Started
                 </Button>
               </>
             )}
