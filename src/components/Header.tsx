@@ -194,8 +194,8 @@ export function Header() {
                     <Button variant="outline" size="sm" className="flex-1" asChild>
                       <Link to="/auth">Sign In</Link>
                     </Button>
-                    <Button variant="default" size="sm" className="flex-1" asChild>
-                      <Link to="/auth">Get Started</Link>
+                    <Button variant="default" size="sm" className="flex-1" onClick={openWelcomeDialog}>
+                      Get Started
                     </Button>
                   </>
                 )}
