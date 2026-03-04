@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -11,17 +11,30 @@ import {
 import { Button } from '@/components/ui/button';
 import { Compass, GraduationCap, Building2, ArrowRight, Sparkles } from 'lucide-react';
 
+// Global trigger function
+let openWelcomeDialogFn: (() => void) | null = null;
+
+export function openWelcomeDialog() {
+  openWelcomeDialogFn?.();
+}
+
 export function WelcomeDialog() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const showDialog = useCallback(() => setOpen(true), []);
+
   useEffect(() => {
-    // Only show for unauthenticated first-time visitors
+    openWelcomeDialogFn = showDialog;
+    return () => { openWelcomeDialogFn = null; };
+  }, [showDialog]);
+
+  useEffect(() => {
+    // Only auto-show for unauthenticated first-time visitors
     if (user) return;
     const hasVisited = localStorage.getItem('cc_has_visited');
     if (!hasVisited) {
-      // Small delay so the page loads first
       const timer = setTimeout(() => setOpen(true), 1500);
       return () => clearTimeout(timer);
     }
@@ -37,8 +50,6 @@ export function WelcomeDialog() {
     localStorage.setItem('cc_has_visited', 'true');
     setOpen(false);
   };
-
-  if (user) return null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleDismiss(); else setOpen(true); }}>

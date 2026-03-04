@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { openWelcomeDialog } from "@/components/WelcomeDialog";
 import { Compass, Menu, X, LogOut, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
