@@ -6,17 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Extract text from PDF using pdf-parse alternative for Deno
+// Extract text from PDF using multiple strategies
 async function extractTextFromPDF(arrayBuffer: ArrayBuffer): Promise<string> {
-  // Convert to base64 for processing
   const uint8Array = new Uint8Array(arrayBuffer);
   let text = '';
   
-  // Simple PDF text extraction - look for text between stream markers
   const decoder = new TextDecoder('utf-8', { fatal: false });
   const content = decoder.decode(uint8Array);
   
-  // Extract text objects from PDF
+  // Strategy 1: Extract text objects from PDF parentheses
   const textMatches = content.match(/\(([^)]+)\)/g);
   if (textMatches) {
     text = textMatches
@@ -25,15 +23,33 @@ async function extractTextFromPDF(arrayBuffer: ArrayBuffer): Promise<string> {
       .join(' ');
   }
   
-  // Also try to extract from text streams
+  // Strategy 2: Extract from text streams
   const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
   let match;
   while ((match = streamRegex.exec(content)) !== null) {
     const streamContent = match[1];
-    // Look for readable text in streams
-    const readableText = streamContent.match(/[A-Za-z0-9\s.,!?;:'"()-]{10,}/g);
+    const readableText = streamContent.match(/[A-Za-z0-9\s.,!?;:'"()\-\/&@#%+]{10,}/g);
     if (readableText) {
       text += ' ' + readableText.join(' ');
+    }
+  }
+
+  // Strategy 3: Look for BT...ET text blocks (PDF text objects)
+  const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g;
+  while ((match = btEtRegex.exec(content)) !== null) {
+    const block = match[1];
+    const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g);
+    if (tjMatches) {
+      text += ' ' + tjMatches.map(m => m.replace(/\)\s*Tj/, '').replace(/\(/, '')).join(' ');
+    }
+    const tjArrayMatches = block.match(/\[([^\]]*)\]\s*TJ/g);
+    if (tjArrayMatches) {
+      for (const tjArr of tjArrayMatches) {
+        const innerTexts = tjArr.match(/\(([^)]*)\)/g);
+        if (innerTexts) {
+          text += ' ' + innerTexts.map(m => m.slice(1, -1)).join('');
+        }
+      }
     }
   }
   
