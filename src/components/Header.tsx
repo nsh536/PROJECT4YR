@@ -128,9 +128,12 @@ export function Header() {
                     </Badge>
                   )}
                 </Link>
-                <span className="text-sm text-muted-foreground">
+                <Link 
+                  to="/profile" 
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
                   {profile?.full_name || user.email}
-                </span>
+                </Link>
                 <Button variant="ghost" size="sm" onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out

@@ -12,6 +12,7 @@ import Candidates from "./pages/Candidates";
 import Messages from "./pages/Messages";
 import Auth from "./pages/Auth";
 import ResumeUpload from "./pages/ResumeUpload";
+import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Applications from "./pages/Applications";
 import EmployerDashboard from "./pages/EmployerDashboard";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/applications" element={<Applications />} />
               <Route path="/dashboard" element={<EmployerDashboard />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
