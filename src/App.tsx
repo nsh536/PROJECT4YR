@@ -12,6 +12,7 @@ import Candidates from "./pages/Candidates";
 import Messages from "./pages/Messages";
 import Auth from "./pages/Auth";
 import ResumeUpload from "./pages/ResumeUpload";
+import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Applications from "./pages/Applications";
 import EmployerDashboard from "./pages/EmployerDashboard";
