@@ -128,7 +128,16 @@ serve(async (req) => {
   "summary": "Brief professional summary (2-3 sentences)",
   "skills": ["array", "of", "technical", "and", "soft", "skills"],
   "experience_years": number of years of experience (integer),
-  "education": "Highest education level and institution",
+  "education": "Full education details including degree, branch/specialization, institution name, and year. Examples: 'B.Tech in Computer Science, ABC University, 2020', 'M.Tech in AI/ML, XYZ Institute, 2022', 'MBA Finance, IIM Ahmedabad, 2021'",
+  "education_details": [
+    {
+      "degree": "B.Tech / M.Tech / MBA / B.Sc / M.Sc / BCA / MCA / PhD / Diploma / 12th / 10th etc.",
+      "branch": "Computer Science / Mechanical / Electronics / AI/ML / Finance etc.",
+      "institution": "College or University name",
+      "year": "Graduation year or duration",
+      "percentage_or_cgpa": "Score if mentioned"
+    }
+  ],
   "experience": [
     {
       "company": "Company name",
@@ -140,8 +149,13 @@ serve(async (req) => {
 }
 
 IMPORTANT:
+- EDUCATION IS CRITICAL: Look very carefully for educational qualifications. Common Indian degrees include B.Tech, M.Tech, B.E., M.E., BCA, MCA, B.Sc, M.Sc, MBA, BBA, B.Com, M.Com, PhD, Diploma, ITI, 10th, 12th, SSLC, HSC, Intermediate. Also look for international degrees like BS, MS, BA, MA, Associate's, etc.
+- Look for education keywords: "University", "College", "Institute", "School", "Academy", "CGPA", "GPA", "Percentage", "Graduated", "Pursuing", "Batch"
+- The "education" field should be a complete summary string of ALL education found
+- The "education_details" array should list each qualification separately
 - Be thorough in extracting skills - include programming languages, frameworks, tools, soft skills, certifications, etc.
-- Look for keywords and context clues even if the text is partially garbled
+- Look for keywords and context clues even if the text is partially garbled or has OCR artifacts
+- If education text appears fragmented (e.g. "B. Tech" or "B .Tech" or "BTech"), normalize it
 - If information is not clearly available, use reasonable defaults (empty array for skills, 0 for years, empty string for text)
 - Return ONLY valid JSON, no other text`;
 
