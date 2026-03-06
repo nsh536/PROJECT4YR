@@ -89,6 +89,40 @@ serve(async (req) => {
           if (extension === 'pdf') {
             textContent = await extractTextFromPDF(arrayBuffer);
             console.log('Extracted PDF text length:', textContent.length);
+            
+            // If programmatic extraction yields too little text, use Vision API as fallback
+            if (textContent.length < 100) {
+              console.log('PDF text extraction yielded minimal content, using Vision API fallback...');
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer.slice(0, 500000))));
+              try {
+                const visionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    model: 'google/gemini-2.5-flash',
+                    messages: [
+                      { role: 'user', content: [
+                        { type: 'text', text: 'Extract ALL text from this resume document. Include every detail especially education qualifications (B.Tech, M.Tech, MBA, etc.), skills, work experience, and personal information. Return the raw text only.' },
+                        { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } }
+                      ]}
+                    ],
+                  }),
+                });
+                if (visionResponse.ok) {
+                  const visionData = await visionResponse.json();
+                  const extractedText = visionData.choices?.[0]?.message?.content || '';
+                  if (extractedText.length > textContent.length) {
+                    textContent = extractedText;
+                    console.log('Vision API extracted text length:', textContent.length);
+                  }
+                }
+              } catch (visionError) {
+                console.error('Vision API fallback failed:', visionError);
+              }
+            }
           } else if (extension === 'txt') {
             textContent = new TextDecoder().decode(arrayBuffer);
           } else {
