@@ -171,15 +171,20 @@ export type Database = {
         Row: {
           application_notifications: boolean | null
           avatar_url: string | null
+          bg_image_url: string | null
+          bio: string | null
           company_name: string | null
           created_at: string | null
           email: string
           email_notifications: boolean | null
           full_name: string | null
+          github_url: string | null
           id: string
+          linkedin_url: string | null
           location: string | null
           message_notifications: boolean | null
           phone: string | null
+          portfolio_url: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string | null
           user_id: string
@@ -187,15 +192,20 @@ export type Database = {
         Insert: {
           application_notifications?: boolean | null
           avatar_url?: string | null
+          bg_image_url?: string | null
+          bio?: string | null
           company_name?: string | null
           created_at?: string | null
           email: string
           email_notifications?: boolean | null
           full_name?: string | null
+          github_url?: string | null
           id?: string
+          linkedin_url?: string | null
           location?: string | null
           message_notifications?: boolean | null
           phone?: string | null
+          portfolio_url?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
           user_id: string
@@ -203,15 +213,20 @@ export type Database = {
         Update: {
           application_notifications?: boolean | null
           avatar_url?: string | null
+          bg_image_url?: string | null
+          bio?: string | null
           company_name?: string | null
           created_at?: string | null
           email?: string
           email_notifications?: boolean | null
           full_name?: string | null
+          github_url?: string | null
           id?: string
+          linkedin_url?: string | null
           location?: string | null
           message_notifications?: boolean | null
           phone?: string | null
+          portfolio_url?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
           user_id?: string
