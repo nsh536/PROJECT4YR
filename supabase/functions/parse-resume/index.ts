@@ -6,17 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Extract text from PDF using pdf-parse alternative for Deno
+// Extract text from PDF using multiple strategies
 async function extractTextFromPDF(arrayBuffer: ArrayBuffer): Promise<string> {
-  // Convert to base64 for processing
   const uint8Array = new Uint8Array(arrayBuffer);
   let text = '';
   
-  // Simple PDF text extraction - look for text between stream markers
   const decoder = new TextDecoder('utf-8', { fatal: false });
   const content = decoder.decode(uint8Array);
   
-  // Extract text objects from PDF
+  // Strategy 1: Extract text objects from PDF parentheses
   const textMatches = content.match(/\(([^)]+)\)/g);
   if (textMatches) {
     text = textMatches
@@ -25,15 +23,33 @@ async function extractTextFromPDF(arrayBuffer: ArrayBuffer): Promise<string> {
       .join(' ');
   }
   
-  // Also try to extract from text streams
+  // Strategy 2: Extract from text streams
   const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
   let match;
   while ((match = streamRegex.exec(content)) !== null) {
     const streamContent = match[1];
-    // Look for readable text in streams
-    const readableText = streamContent.match(/[A-Za-z0-9\s.,!?;:'"()-]{10,}/g);
+    const readableText = streamContent.match(/[A-Za-z0-9\s.,!?;:'"()\-\/&@#%+]{10,}/g);
     if (readableText) {
       text += ' ' + readableText.join(' ');
+    }
+  }
+
+  // Strategy 3: Look for BT...ET text blocks (PDF text objects)
+  const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g;
+  while ((match = btEtRegex.exec(content)) !== null) {
+    const block = match[1];
+    const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g);
+    if (tjMatches) {
+      text += ' ' + tjMatches.map(m => m.replace(/\)\s*Tj/, '').replace(/\(/, '')).join(' ');
+    }
+    const tjArrayMatches = block.match(/\[([^\]]*)\]\s*TJ/g);
+    if (tjArrayMatches) {
+      for (const tjArr of tjArrayMatches) {
+        const innerTexts = tjArr.match(/\(([^)]*)\)/g);
+        if (innerTexts) {
+          text += ' ' + innerTexts.map(m => m.slice(1, -1)).join('');
+        }
+      }
     }
   }
   
@@ -73,6 +89,40 @@ serve(async (req) => {
           if (extension === 'pdf') {
             textContent = await extractTextFromPDF(arrayBuffer);
             console.log('Extracted PDF text length:', textContent.length);
+            
+            // If programmatic extraction yields too little text, use Vision API as fallback
+            if (textContent.length < 100) {
+              console.log('PDF text extraction yielded minimal content, using Vision API fallback...');
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer.slice(0, 500000))));
+              try {
+                const visionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    model: 'google/gemini-2.5-flash',
+                    messages: [
+                      { role: 'user', content: [
+                        { type: 'text', text: 'Extract ALL text from this resume document. Include every detail especially education qualifications (B.Tech, M.Tech, MBA, etc.), skills, work experience, and personal information. Return the raw text only.' },
+                        { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } }
+                      ]}
+                    ],
+                  }),
+                });
+                if (visionResponse.ok) {
+                  const visionData = await visionResponse.json();
+                  const extractedText = visionData.choices?.[0]?.message?.content || '';
+                  if (extractedText.length > textContent.length) {
+                    textContent = extractedText;
+                    console.log('Vision API extracted text length:', textContent.length);
+                  }
+                }
+              } catch (visionError) {
+                console.error('Vision API fallback failed:', visionError);
+              }
+            }
           } else if (extension === 'txt') {
             textContent = new TextDecoder().decode(arrayBuffer);
           } else {
@@ -112,7 +162,16 @@ serve(async (req) => {
   "summary": "Brief professional summary (2-3 sentences)",
   "skills": ["array", "of", "technical", "and", "soft", "skills"],
   "experience_years": number of years of experience (integer),
-  "education": "Highest education level and institution",
+  "education": "Full education details including degree, branch/specialization, institution name, and year. Examples: 'B.Tech in Computer Science, ABC University, 2020', 'M.Tech in AI/ML, XYZ Institute, 2022', 'MBA Finance, IIM Ahmedabad, 2021'",
+  "education_details": [
+    {
+      "degree": "B.Tech / M.Tech / MBA / B.Sc / M.Sc / BCA / MCA / PhD / Diploma / 12th / 10th etc.",
+      "branch": "Computer Science / Mechanical / Electronics / AI/ML / Finance etc.",
+      "institution": "College or University name",
+      "year": "Graduation year or duration",
+      "percentage_or_cgpa": "Score if mentioned"
+    }
+  ],
   "experience": [
     {
       "company": "Company name",
@@ -124,8 +183,13 @@ serve(async (req) => {
 }
 
 IMPORTANT:
+- EDUCATION IS CRITICAL: Look very carefully for educational qualifications. Common Indian degrees include B.Tech, M.Tech, B.E., M.E., BCA, MCA, B.Sc, M.Sc, MBA, BBA, B.Com, M.Com, PhD, Diploma, ITI, 10th, 12th, SSLC, HSC, Intermediate. Also look for international degrees like BS, MS, BA, MA, Associate's, etc.
+- Look for education keywords: "University", "College", "Institute", "School", "Academy", "CGPA", "GPA", "Percentage", "Graduated", "Pursuing", "Batch"
+- The "education" field should be a complete summary string of ALL education found
+- The "education_details" array should list each qualification separately
 - Be thorough in extracting skills - include programming languages, frameworks, tools, soft skills, certifications, etc.
-- Look for keywords and context clues even if the text is partially garbled
+- Look for keywords and context clues even if the text is partially garbled or has OCR artifacts
+- If education text appears fragmented (e.g. "B. Tech" or "B .Tech" or "BTech"), normalize it
 - If information is not clearly available, use reasonable defaults (empty array for skills, 0 for years, empty string for text)
 - Return ONLY valid JSON, no other text`;
 
