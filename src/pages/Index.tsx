@@ -237,7 +237,7 @@ const Index = () => {
               <span className="font-display font-bold">CareerCompass</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Career Compass AI. All rights reserved.
+              © 2026 Career Compass AI. All rights reserved.
             </p>
           </div>
         </div>
