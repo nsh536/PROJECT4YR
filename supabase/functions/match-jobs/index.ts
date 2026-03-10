@@ -283,3 +283,23 @@ function basicMatchSingle(job: JobData, skills: string[]) {
     growth_potential: "Unable to assess without AI analysis."
   };
 }
+
+function parseWithRecovery(content: string): AIMatchResult[] {
+  try {
+    return JSON.parse(content);
+  } catch (_e) {
+    // Attempt to repair truncated JSON array
+    const lastBrace = content.lastIndexOf("}");
+    if (lastBrace > 0) {
+      const repaired = content.substring(0, lastBrace + 1) + "]";
+      try {
+        const items = JSON.parse(repaired);
+        console.warn(`Recovered ${items.length} items from truncated response`);
+        return items;
+      } catch (_repairError) {
+        throw new Error("Cannot repair truncated JSON");
+      }
+    }
+    throw new Error("Cannot parse AI response");
+  }
+}
