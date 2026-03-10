@@ -170,22 +170,20 @@ Return: [{"job_id":"uuid","overall_score":N,"skill_match":N,"experience_match":N
     const aiData = await aiResponse.json();
     const aiContent = aiData.choices?.[0]?.message?.content || '';
     
-    console.log('AI response received:', aiContent.substring(0, 200));
+    console.log('AI response length:', aiContent.length);
 
-    // Parse AI response
+    // Parse AI response with recovery
     let aiMatches: AIMatchResult[] = [];
     try {
-      // Extract JSON from potential markdown code blocks
-      let jsonContent = aiContent;
-      if (aiContent.includes('```json')) {
-        jsonContent = aiContent.split('```json')[1].split('```')[0].trim();
-      } else if (aiContent.includes('```')) {
-        jsonContent = aiContent.split('```')[1].split('```')[0].trim();
+      let jsonContent = aiContent.trim();
+      if (jsonContent.includes('```json')) {
+        jsonContent = jsonContent.split('```json')[1].split('```')[0].trim();
+      } else if (jsonContent.includes('```')) {
+        jsonContent = jsonContent.split('```')[1].split('```')[0].trim();
       }
-      aiMatches = JSON.parse(jsonContent);
+      aiMatches = parseWithRecovery(jsonContent);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
-      // Fall back to basic matching
       const matchedJobs = basicMatching(jobs, skills || []);
       return new Response(JSON.stringify({ 
         success: true, 
