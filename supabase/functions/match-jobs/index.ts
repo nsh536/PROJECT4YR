@@ -97,16 +97,16 @@ serve(async (req) => {
     };
 
     // Prepare jobs for AI analysis (limit to avoid token limits)
-    const jobsForAnalysis = jobs.slice(0, 20).map(job => ({
+    const jobsForAnalysis = jobs.slice(0, 10).map(job => ({
       id: job.id,
       title: job.title,
       company: job.company,
       location: job.location,
       job_type: job.job_type,
-      description: job.description?.substring(0, 300) || '',
+      description: job.description?.substring(0, 200) || '',
       skills_required: job.skills_required || [],
       experience_min: job.experience_min || 0,
-      requirements: (job.requirements || []).slice(0, 5)
+      requirements: (job.requirements || []).slice(0, 3)
     }));
 
     // Call Lovable AI for intelligent matching
@@ -117,51 +117,25 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.5-flash-lite',
         messages: [
           {
             role: 'system',
-            content: `You are an expert career advisor and job matching AI. Analyze the candidate's resume and available jobs to provide intelligent matching scores and recommendations.
-
-For each job, evaluate:
-1. Skill Match (0-100): How well the candidate's skills align with job requirements
-2. Experience Match (0-100): How the candidate's experience level fits the role
-3. Education Match (0-100): How relevant the candidate's education is
-4. Career Trajectory (0-100): How this job fits the candidate's career path based on their current title and summary
-
-Provide actionable recommendations for each match.`
+            content: `You are a job matching AI. Return ONLY a JSON array. No markdown, no explanation. Be concise in recommendations (max 15 words each).`
           },
           {
             role: 'user',
-            content: `Analyze this candidate's profile against the available jobs and return detailed matching scores.
+            content: `Match candidate to jobs. Return JSON array only.
 
-CANDIDATE PROFILE:
-- Current Title: ${resumeContext.current_title}
-- Skills: ${resumeContext.skills.join(', ')}
-- Experience: ${resumeContext.experience_years} years
-- Education: ${resumeContext.education}
-- Summary: ${resumeContext.summary}
+CANDIDATE: Skills: ${resumeContext.skills.slice(0, 15).join(', ')} | Exp: ${resumeContext.experience_years}yr | Education: ${resumeContext.education.substring(0, 100)} | Title: ${resumeContext.current_title}
 
-AVAILABLE JOBS:
-${JSON.stringify(jobsForAnalysis, null, 2)}
+JOBS: ${JSON.stringify(jobsForAnalysis)}
 
-Return a JSON array with this exact structure for each job (no markdown, just JSON):
-[{
-  "job_id": "uuid",
-  "overall_score": number (0-100),
-  "skill_match": number (0-100),
-  "experience_match": number (0-100),
-  "education_match": number (0-100),
-  "career_trajectory": number (0-100),
-  "matching_skills": ["skill1", "skill2"],
-  "missing_skills": ["skill1", "skill2"],
-  "recommendation": "Brief personalized recommendation",
-  "growth_potential": "How this role could help career growth"
-}]`
+Return: [{"job_id":"uuid","overall_score":N,"skill_match":N,"experience_match":N,"education_match":N,"career_trajectory":N,"matching_skills":[],"missing_skills":[],"recommendation":"brief","growth_potential":"brief"}]`
           }
         ],
-        temperature: 0.3,
-        max_tokens: 4000
+        temperature: 0.2,
+        max_tokens: 6000
       }),
     });
 
