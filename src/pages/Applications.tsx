@@ -156,6 +156,21 @@ const Applications = () => {
     filterStatus === "all" || app.status === filterStatus
   );
 
+  const handleDeleteApplication = async (applicationId: string) => {
+    const { error } = await supabase
+      .from("applications")
+      .delete()
+      .eq("id", applicationId);
+
+    if (error) {
+      toast.error("Failed to remove application");
+      console.error(error);
+    } else {
+      setApplications(prev => prev.filter(app => app.id !== applicationId));
+      toast.success("Application removed. You can now re-apply for this role.");
+    }
+  };
+
   const formatSalary = (min: number | null, max: number | null) => {
     if (!min && !max) return null;
     if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
