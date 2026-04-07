@@ -650,7 +650,13 @@ const getTimeAgo = (date: string) => {
                   <Card 
                     key={`suggested-${job.id}`}
                     className="group relative overflow-hidden border-primary/20 hover:border-primary/40 hover:shadow-lg transition-all duration-300 cursor-pointer"
-                    onClick={() => !isApplied && setApplyingTo(job)}
+                    onClick={() => {
+                      if (userResume && job.matchScore !== undefined && job.matchScore < 50) {
+                        toast.error("Your profile match is below 50% for this role. Improve your skills to apply.", { description: `Current match: ${job.matchScore}%` });
+                        return;
+                      }
+                      if (!isApplied) setApplyingTo(job);
+                    }}
                   >
                     {/* Match score indicator for AI matches */}
                     {hasAIData && (
@@ -1381,11 +1387,17 @@ const getTimeAgo = (date: string) => {
                         ) : (
                           <Button 
                             className="flex-1"
-                            onClick={() => setApplyingTo(job)}
-                            disabled={!user || profile?.role === 'employer'}
+                            onClick={() => {
+                              if (userResume && job.matchScore !== undefined && job.matchScore < 50) {
+                                toast.error("Your profile match is below 50% for this role. Improve your skills to apply.", { description: `Current match: ${job.matchScore}%` });
+                                return;
+                              }
+                              setApplyingTo(job);
+                            }}
+                            disabled={!user || profile?.role === 'employer' || (userResume && job.matchScore !== undefined && job.matchScore < 50)}
                           >
                             <Send className="h-4 w-4 mr-2" />
-                            {!user ? "Sign in to Apply" : profile?.role === 'employer' ? "Employers can't apply" : "Apply Now"}
+                            {!user ? "Sign in to Apply" : profile?.role === 'employer' ? "Employers can't apply" : (userResume && job.matchScore !== undefined && job.matchScore < 50) ? `${job.matchScore}% Match - Too Low` : "Apply Now"}
                           </Button>
                         )}
                         {user && profile?.role === 'student' && (
@@ -1481,10 +1493,25 @@ const getTimeAgo = (date: string) => {
                     </div>
                   )}
                 </div>
+                {userResume && applyingTo?.matchScore !== undefined && applyingTo.matchScore < 50 ? (
+                  <div className="text-center py-4">
+                    <div className="p-3 rounded-full bg-destructive/10 w-fit mx-auto mb-3">
+                      <XCircle className="h-8 w-8 text-destructive" />
+                    </div>
+                    <p className="font-semibold text-foreground mb-1">Match Too Low ({applyingTo.matchScore}%)</p>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Your profile needs at least 50% match to apply. Consider upskilling in the required areas.
+                    </p>
+                    <Button variant="outline" onClick={() => setApplyingTo(null)}>
+                      Close
+                    </Button>
+                  </div>
+                ) : (
                 <Button onClick={handleApply} className="w-full" disabled={isApplying}>
                   {isApplying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Submit Application
                 </Button>
+                )}
               </>
             ) : (
               <div className="text-center py-4">
