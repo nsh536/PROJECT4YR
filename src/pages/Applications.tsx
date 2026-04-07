@@ -13,8 +13,11 @@ import {
   UserCheck,
   XCircle,
   Briefcase,
-  TrendingUp
+  TrendingUp,
+  Trash2
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
@@ -153,6 +156,21 @@ const Applications = () => {
     filterStatus === "all" || app.status === filterStatus
   );
 
+  const handleDeleteApplication = async (applicationId: string) => {
+    const { error } = await supabase
+      .from("applications")
+      .delete()
+      .eq("id", applicationId);
+
+    if (error) {
+      toast.error("Failed to remove application");
+      console.error(error);
+    } else {
+      setApplications(prev => prev.filter(app => app.id !== applicationId));
+      toast.success("Application removed. You can now re-apply for this role.");
+    }
+  };
+
   const formatSalary = (min: number | null, max: number | null) => {
     if (!min && !max) return null;
     if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
@@ -289,6 +307,21 @@ const Applications = () => {
                               {application.match_score}% Match
                             </span>
                           </div>
+                        )}
+                        <Badge className={`${status.className} flex items-center gap-1.5 px-3 py-1.5`}>
+                          <StatusIcon className="h-4 w-4" />
+                          {status.label}
+                        </Badge>
+                        {application.status === "pending" && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteApplication(application.id)}
+                            className="flex items-center gap-1.5"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Remove
+                          </Button>
                         )}
                         <Badge className={`${status.className} flex items-center gap-1.5 px-3 py-1.5`}>
                           <StatusIcon className="h-4 w-4" />
