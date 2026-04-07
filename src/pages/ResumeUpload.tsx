@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, DragEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload, X, File } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload, X, File, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +56,7 @@ export default function ResumeUpload() {
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -410,8 +411,43 @@ export default function ResumeUpload() {
                           <FileText className="h-4 w-4" />
                           {resume.file_name}
                         </CardDescription>
-                      </div>
+                     </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                      disabled={deleting}
+                      onClick={async () => {
+                        if (!user || !resume) return;
+                        setDeleting(true);
+                        try {
+                          // Delete from storage
+                          const filePath = resume.file_url.split('/resumes/')[1];
+                          if (filePath) {
+                            await supabase.storage.from('resumes').remove([decodeURIComponent(filePath)]);
+                          }
+                          // Delete from database
+                          const { error } = await supabase
+                            .from('resumes')
+                            .delete()
+                            .eq('id', resume.id)
+                            .eq('user_id', user.id);
+                          if (error) throw error;
+                          setResume(null);
+                          setMatchedJobs([]);
+                          toast.success('Resume removed successfully');
+                        } catch (err: any) {
+                          console.error('Delete error:', err);
+                          toast.error('Failed to remove resume');
+                        } finally {
+                          setDeleting(false);
+                        }
+                      }}
+                    >
+                      {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                      Remove
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
