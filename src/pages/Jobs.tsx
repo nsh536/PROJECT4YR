@@ -633,9 +633,9 @@ const getTimeAgo = (date: string) => {
               )}
             </div>
             
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {(userResume 
-                ? jobs.filter(j => (j.matchScore || 0) > 0).slice(0, 3) 
+                ? [...jobs].filter(j => (j.matchScore || 0) > 30).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)).slice(0, 6) 
                 : jobs.slice(0, 3)
               ).map((job, index) => {
                 const expLevel = getExperienceLevel(job.experience_min);
