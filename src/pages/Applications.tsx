@@ -312,6 +312,21 @@ const Applications = () => {
                           <StatusIcon className="h-4 w-4" />
                           {status.label}
                         </Badge>
+                        {application.status === "pending" && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteApplication(application.id)}
+                            className="flex items-center gap-1.5"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Remove
+                          </Button>
+                        )}
+                        <Badge className={`${status.className} flex items-center gap-1.5 px-3 py-1.5`}>
+                          <StatusIcon className="h-4 w-4" />
+                          {status.label}
+                        </Badge>
                       </div>
                     </div>
 
