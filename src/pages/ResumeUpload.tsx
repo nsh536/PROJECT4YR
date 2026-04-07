@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, DragEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload, X, File } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle, Briefcase, GraduationCap, Clock, MapPin, Building2, TrendingUp, CloudUpload, X, File, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
